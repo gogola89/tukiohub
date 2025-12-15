@@ -36,12 +36,13 @@ INSTALLED_APPS = [
     'storages',
 
     # TukioHub apps
-    'apps.users',
-    'apps.events',
-    'apps.bookings',
-    'apps.payments',
-    'apps.analytics',
-    'apps.notifications',
+    # TODO: Enable these apps as they are developed in sprints
+    # 'apps.users',
+    # 'apps.events',
+    # 'apps.bookings',
+    # 'apps.payments',
+    # 'apps.analytics',
+    # 'apps.notifications',
 ]
 
 MIDDLEWARE = [
@@ -93,7 +94,8 @@ DATABASES = {
 
 
 # Custom User Model
-AUTH_USER_MODEL = 'users.User'
+# TODO: Uncomment after creating User model in Sprint 2
+# AUTH_USER_MODEL = 'users.User'
 
 
 # Password validation

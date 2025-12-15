@@ -1,6 +1,6 @@
 # TukioHub Backend
 
-Django REST API for TukioHub - Kenyan Event Management System
+Django 5.0 REST API for TukioHub - Kenyan Event Management System
 
 ## Setup
 
