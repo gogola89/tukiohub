@@ -1,0 +1,18 @@
+[MASTER]
+load-plugins=pylint_django
+django-settings-module=config.settings.development
+
+[FORMAT]
+max-line-length=100
+
+[MESSAGES CONTROL]
+disable=C0111,  # missing-docstring
+        C0103,  # invalid-name
+        R0903,  # too-few-public-methods
+        R0801,  # duplicate-code
+        W0212,  # protected-access
+        C0330,  # bad-continuation
+
+[DESIGN]
+max-args=10
+max-attributes=15
