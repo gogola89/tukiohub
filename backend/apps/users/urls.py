@@ -15,6 +15,13 @@ from .views import (
     DocumentUploadView,
     OrganizerDashboardView
 )
+from .admin_views import (
+    AdminOrganizerListView,
+    AdminOrganizerDetailView,
+    OrganizerApprovalView,
+    AdminDashboardView,
+    AdminAnalyticsView
+)
 
 app_name = 'users'
 
@@ -38,4 +45,11 @@ urlpatterns = [
 
     # Organizer Dashboard
     path('organizer/dashboard/', OrganizerDashboardView.as_view(), name='organizer-dashboard'),
+
+    # Admin Routes
+    path('admin/organizers/', AdminOrganizerListView.as_view(), name='admin-organizers-list'),
+    path('admin/organizers/<uuid:pk>/', AdminOrganizerDetailView.as_view(), name='admin-organizer-detail'),
+    path('admin/organizers/<uuid:pk>/approve-reject/', OrganizerApprovalView.as_view(), name='admin-organizer-approval'),
+    path('admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
+    path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
 ]

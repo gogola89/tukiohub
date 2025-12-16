@@ -1,0 +1,31 @@
+APPLICATION UPDATE
+=====================================
+
+Hello {{ user.company_name|default:user.email }},
+
+Thank you for your interest in becoming an event organizer on TukioHub.
+
+After reviewing your application, we regret to inform you that we are unable to approve your organizer account at this time.
+
+{% if reason %}
+REASON:
+{{ reason }}
+{% endif %}
+
+WHAT YOU CAN DO:
+
+* Review our organizer requirements at: http://localhost:3000/organizer-requirements
+* Ensure all required documentation is complete and valid
+* Submit a new application once you've addressed the issues
+* Contact our support team if you need clarification
+
+We appreciate your understanding and hope to work with you in the future.
+
+If you believe this decision was made in error or have any questions, please contact our support team at support@tukiohub.com.
+
+Best regards,
+The TukioHub Team
+
+---
+© 2025 TukioHub. All rights reserved.
+This is an automated message, please do not reply to this email.
