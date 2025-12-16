@@ -84,6 +84,7 @@ class User(AbstractUser):
         default=PENDING
     )
     verification_documents = models.JSONField(default=list, blank=True)
+    email_verified = models.BooleanField(default=False)
 
     # Status fields
     is_active = models.BooleanField(default=True)
@@ -154,6 +155,37 @@ class PasswordReset(models.Model):
 
     def __str__(self):
         return f"Password reset for {self.user.email}"
+
+    @property
+    def is_valid(self):
+        """Check if token is still valid"""
+        from django.utils import timezone
+        return not self.used and self.expires_at > timezone.now()
+
+
+class EmailVerification(models.Model):
+    """
+    Model to handle email verification tokens
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_verifications')
+    token = models.CharField(max_length=255, unique=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['token']),
+            models.Index(fields=['user', 'used']),
+        ]
+        verbose_name = _('email verification')
+        verbose_name_plural = _('email verifications')
+
+    def __str__(self):
+        return f"Email verification for {self.user.email}"
 
     @property
     def is_valid(self):

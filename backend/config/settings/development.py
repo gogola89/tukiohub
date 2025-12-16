@@ -15,6 +15,9 @@ CORS_ALLOW_ALL_ORIGINS = True
 # Email Backend for Development (Console)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+# Frontend URL for email links
+FRONTEND_URL = 'http://localhost:3000'
+
 # Django Debug Toolbar
 INSTALLED_APPS += ['debug_toolbar']
 MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']

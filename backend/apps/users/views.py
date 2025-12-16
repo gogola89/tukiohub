@@ -13,9 +13,12 @@ from .serializers import (
     UserLoginSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
-    EmailVerificationSerializer
+    EmailVerificationSerializer,
+    ProfileImageUploadSerializer,
+    DocumentUploadSerializer
 )
-from .models import PasswordReset
+from .models import PasswordReset, EmailVerification
+from .services import EmailService, generate_verification_token, verify_token
 import secrets
 from datetime import timedelta
 from django.utils import timezone
@@ -40,7 +43,9 @@ class UserRegistrationView(generics.CreateAPIView):
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
 
-        # TODO: Send verification email in Sprint 3
+        # Generate and send verification email
+        verification_token = generate_verification_token(user)
+        EmailService.send_verification_email(user, verification_token)
 
         return Response({
             'user': UserSerializer(user).data,
@@ -106,13 +111,14 @@ class PasswordResetRequestView(generics.GenericAPIView):
             token = secrets.token_urlsafe(32)
             expires_at = timezone.now() + timedelta(hours=24)
 
-            PasswordReset.objects.create(
+            password_reset = PasswordReset.objects.create(
                 user=user,
                 token=token,
                 expires_at=expires_at
             )
 
-            # TODO: Send password reset email in Sprint 3
+            # Send password reset email
+            EmailService.send_password_reset_email(user, password_reset)
 
         except User.DoesNotExist:
             # Don't reveal if email exists
@@ -153,8 +159,109 @@ class EmailVerificationView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # TODO: Implement email verification logic in Sprint 3
+        token = serializer.validated_data['token']
+        success, message, user = verify_token(token)
+
+        if not success:
+            return Response({
+                'message': message
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Send welcome email
+        EmailService.send_welcome_email(user)
 
         return Response({
-            'message': 'Email verified successfully.'
+            'message': message,
+            'user': UserSerializer(user).data
         }, status=status.HTTP_200_OK)
+
+
+class ProfileImageUploadView(generics.UpdateAPIView):
+    """
+    PUT/PATCH /api/auth/upload-logo/
+    Upload profile logo/image
+    """
+    serializer_class = ProfileImageUploadSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response({
+            'message': 'Profile image uploaded successfully.',
+            'user': UserSerializer(instance).data
+        }, status=status.HTTP_200_OK)
+
+
+class DocumentUploadView(generics.GenericAPIView):
+    """
+    POST /api/auth/upload-document/
+    Upload verification documents
+    """
+    serializer_class = DocumentUploadSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        document = serializer.validated_data['document']
+        document_type = serializer.validated_data['document_type']
+
+        user = request.user
+
+        # Save document to storage (local in dev, S3 in prod)
+        from django.core.files.storage import default_storage
+        file_path = f'documents/{user.id}/{document_type}_{document.name}'
+        saved_path = default_storage.save(file_path, document)
+
+        # Add document info to user's verification_documents
+        document_info = {
+            'type': document_type,
+            'filename': document.name,
+            'path': saved_path,
+            'uploaded_at': timezone.now().isoformat()
+        }
+
+        user.verification_documents.append(document_info)
+        user.save()
+
+        return Response({
+            'message': 'Document uploaded successfully.',
+            'document': document_info,
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+
+
+class OrganizerDashboardView(generics.GenericAPIView):
+    """
+    GET /api/organizer/dashboard/
+    Get organizer dashboard statistics
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+
+        # Basic dashboard stats (will be expanded in later sprints)
+        dashboard_data = {
+            'user': UserSerializer(user).data,
+            'stats': {
+                'total_events': 0,  # Will be implemented in Sprint 5
+                'active_events': 0,
+                'total_tickets_sold': 0,
+                'total_revenue': 0,
+            },
+            'verification_status': user.verification_status,
+            'email_verified': user.email_verified,
+            'profile_complete': bool(user.company_name and user.phone_number and user.logo),
+        }
+
+        return Response(dashboard_data, status=status.HTTP_200_OK)

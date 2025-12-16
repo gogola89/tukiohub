@@ -10,7 +10,10 @@ from .views import (
     UserProfileView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
-    EmailVerificationView
+    EmailVerificationView,
+    ProfileImageUploadView,
+    DocumentUploadView,
+    OrganizerDashboardView
 )
 
 app_name = 'users'
@@ -28,4 +31,11 @@ urlpatterns = [
 
     # Email Verification
     path('auth/verify-email/', EmailVerificationView.as_view(), name='email-verification'),
+
+    # Profile Management
+    path('auth/upload-logo/', ProfileImageUploadView.as_view(), name='upload-logo'),
+    path('auth/upload-document/', DocumentUploadView.as_view(), name='upload-document'),
+
+    # Organizer Dashboard
+    path('organizer/dashboard/', OrganizerDashboardView.as_view(), name='organizer-dashboard'),
 ]

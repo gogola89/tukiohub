@@ -1,0 +1,21 @@
+WELCOME TO TUKIOHUB!
+=====================================
+
+Hello{% if user.company_name %} {{ user.company_name }}{% endif %},
+
+Thank you for registering with TukioHub, Kenya's premier event management platform!
+
+To complete your registration and start creating amazing events, please verify your email address by clicking the link below:
+
+{{ verification_link }}
+
+This link will expire in {{ expiry_hours }} hours.
+
+If you didn't create an account with TukioHub, please ignore this email.
+
+Best regards,
+The TukioHub Team
+
+---
+© 2025 TukioHub. All rights reserved.
+This is an automated message, please do not reply to this email.

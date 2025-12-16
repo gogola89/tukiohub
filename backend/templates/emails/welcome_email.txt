@@ -1,0 +1,30 @@
+WELCOME TO TUKIOHUB!
+=====================================
+
+Hello {{ user.company_name|default:user.email }},
+
+Congratulations! Your email has been verified and your TukioHub account is now active.
+
+You can now start creating and managing your events on Kenya's premier event management platform.
+
+WHAT YOU CAN DO WITH TUKIOHUB:
+
+* Create Events: Set up your events with detailed information and attractive images
+* Manage Tickets: Create multiple ticket types (VIP, VVIP, Regular, Early Bird)
+* Accept Payments: Receive payments via M-Pesa and card payments
+* Track Sales: Monitor ticket sales and attendee information in real-time
+* Check-in Attendees: Use QR code scanning for quick event check-ins
+* Analytics: View detailed reports and insights about your events
+
+Get started by logging into your dashboard at: http://localhost:3000/dashboard
+
+If you have any questions or need assistance, feel free to reach out to our support team.
+
+Happy event planning!
+
+Best regards,
+The TukioHub Team
+
+---
+© 2025 TukioHub. All rights reserved.
+This is an automated message, please do not reply to this email.

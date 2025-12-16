@@ -15,9 +15,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'company_name', 'phone_number', 'logo',
-            'role', 'verification_status', 'is_active', 'created_at', 'updated_at'
+            'role', 'verification_status', 'email_verified', 'verification_documents',
+            'is_active', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'verification_status', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'email', 'role', 'verification_status', 'email_verified', 'created_at', 'updated_at']
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -131,6 +132,41 @@ class EmailVerificationSerializer(serializers.Serializer):
 
     token = serializers.CharField(required=True)
 
-    def validate_token(self, value):
-        # TODO: Implement token validation in Sprint 3
+
+class ProfileImageUploadSerializer(serializers.ModelSerializer):
+    """Serializer for uploading profile image/logo"""
+
+    class Meta:
+        model = User
+        fields = ['logo']
+
+
+class DocumentUploadSerializer(serializers.Serializer):
+    """Serializer for uploading verification documents"""
+
+    document = serializers.FileField(required=True)
+    document_type = serializers.ChoiceField(
+        choices=[
+            ('business_registration', 'Business Registration'),
+            ('id_document', 'ID Document'),
+            ('tax_certificate', 'Tax Certificate'),
+            ('other', 'Other'),
+        ],
+        required=True
+    )
+
+    def validate_document(self, value):
+        """Validate uploaded document"""
+        # Check file size (max 5MB)
+        if value.size > 5 * 1024 * 1024:
+            raise serializers.ValidationError("File size must not exceed 5MB.")
+
+        # Check file extension
+        allowed_extensions = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+        ext = value.name.split('.')[-1].lower()
+        if ext not in allowed_extensions:
+            raise serializers.ValidationError(
+                f"Unsupported file extension. Allowed: {', '.join(allowed_extensions)}"
+            )
+
         return value

@@ -9,6 +9,9 @@ DEBUG = False
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=lambda v: [s.strip() for s in v.split(',') if s])
 
+# Frontend URL for email links
+FRONTEND_URL = config('FRONTEND_URL', default='https://tukiohub.com')
+
 # Security Settings
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
