@@ -15,7 +15,8 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     EmailVerificationSerializer,
     ProfileImageUploadSerializer,
-    DocumentUploadSerializer
+    DocumentUploadSerializer,
+    OrganizerDashboardSerializer
 )
 from .models import PasswordReset, EmailVerification
 from .services import EmailService, generate_verification_token, verify_token
@@ -245,7 +246,9 @@ class OrganizerDashboardView(generics.GenericAPIView):
     GET /api/organizer/dashboard/
     Get organizer dashboard statistics
     """
+    serializer_class = OrganizerDashboardSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = []  # Disable filters for this view
 
     def get(self, request, *args, **kwargs):
         user = request.user

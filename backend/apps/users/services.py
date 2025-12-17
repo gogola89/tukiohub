@@ -136,6 +136,75 @@ class EmailService:
             logger.error(f"Failed to send welcome email to {user.email}: {str(e)}")
             return False
 
+    @staticmethod
+    def send_approval_email(user):
+        """
+        Send organizer approval notification email
+
+        Args:
+            user: User instance
+        """
+        try:
+            subject = 'TukioHub - Your Organizer Account Has Been Approved!'
+            html_message = render_to_string('emails/organizer_approved.html', {
+                'user': user,
+            })
+            plain_message = render_to_string('emails/organizer_approved.txt', {
+                'user': user,
+            })
+
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+
+            logger.info(f"Approval email sent to {user.email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send approval email to {user.email}: {str(e)}")
+            return False
+
+    @staticmethod
+    def send_rejection_email(user, reason=None):
+        """
+        Send organizer rejection notification email
+
+        Args:
+            user: User instance
+            reason: Optional reason for rejection
+        """
+        try:
+            subject = 'TukioHub - Update on Your Organizer Application'
+            html_message = render_to_string('emails/organizer_rejected.html', {
+                'user': user,
+                'reason': reason,
+            })
+            plain_message = render_to_string('emails/organizer_rejected.txt', {
+                'user': user,
+                'reason': reason,
+            })
+
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+
+            logger.info(f"Rejection email sent to {user.email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send rejection email to {user.email}: {str(e)}")
+            return False
+
 
 def generate_verification_token(user):
     """

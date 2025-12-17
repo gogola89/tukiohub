@@ -170,3 +170,106 @@ class DocumentUploadSerializer(serializers.Serializer):
             )
 
         return value
+
+
+# Admin Serializers
+
+class AdminOrganizerListSerializer(serializers.ModelSerializer):
+    """Serializer for admin view of organizers list"""
+
+    documents_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'email', 'company_name', 'phone_number', 'logo',
+            'role', 'verification_status', 'email_verified',
+            'is_active', 'created_at', 'updated_at', 'documents_count'
+        ]
+        read_only_fields = fields
+
+    def get_documents_count(self, obj):
+        """Get count of uploaded verification documents"""
+        return len(obj.verification_documents) if obj.verification_documents else 0
+
+
+class AdminOrganizerDetailSerializer(serializers.ModelSerializer):
+    """Serializer for admin view of organizer details"""
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'email', 'company_name', 'phone_number', 'logo',
+            'role', 'verification_status', 'email_verified', 'verification_documents',
+            'is_active', 'is_staff', 'created_at', 'updated_at', 'last_login'
+        ]
+        read_only_fields = fields
+
+
+class OrganizerApprovalSerializer(serializers.Serializer):
+    """Serializer for approving/rejecting organizer applications"""
+
+    action = serializers.ChoiceField(
+        choices=['approve', 'reject'],
+        required=True
+    )
+    reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=500,
+        help_text="Optional reason for rejection"
+    )
+
+    def validate(self, attrs):
+        if attrs['action'] == 'reject' and not attrs.get('reason'):
+            raise serializers.ValidationError({
+                "reason": "Reason is required when rejecting an organizer."
+            })
+        return attrs
+
+
+class AdminUpdateOrganizerSerializer(serializers.ModelSerializer):
+    """Serializer for admin to update organizer details"""
+
+    class Meta:
+        model = User
+        fields = [
+            'company_name', 'phone_number', 'is_active',
+            'verification_status', 'role'
+        ]
+
+    def validate_verification_status(self, value):
+        """Validate verification status transitions"""
+        valid_statuses = [User.PENDING, User.APPROVED, User.REJECTED]
+        if value not in valid_statuses:
+            raise serializers.ValidationError("Invalid verification status.")
+        return value
+
+
+class AdminDashboardSerializer(serializers.Serializer):
+    """Serializer for admin dashboard response (for schema generation only)"""
+
+    organizer_stats = serializers.DictField(help_text="Organizer statistics")
+    user_stats = serializers.DictField(help_text="User statistics")
+    platform_stats = serializers.DictField(help_text="Platform statistics")
+    recent_pending_organizers = AdminOrganizerListSerializer(many=True)
+
+
+class AdminAnalyticsSerializer(serializers.Serializer):
+    """Serializer for admin analytics response (for schema generation only)"""
+
+    time_period = serializers.CharField(help_text="Time period for analytics")
+    organizer_registrations = serializers.ListField(help_text="Organizer registrations over time")
+    approval_rate = serializers.FloatField(help_text="Approval rate percentage")
+    email_verification_rate = serializers.FloatField(help_text="Email verification rate percentage")
+    metrics = serializers.DictField(help_text="Additional metrics")
+
+
+class OrganizerDashboardSerializer(serializers.Serializer):
+    """Serializer for organizer dashboard response (for schema generation only)"""
+
+    user = UserSerializer(help_text="User profile information")
+    stats = serializers.DictField(help_text="Dashboard statistics")
+    verification_status = serializers.CharField(help_text="Organizer verification status")
+    email_verified = serializers.BooleanField(help_text="Email verification status")
+    profile_complete = serializers.BooleanField(help_text="Profile completion status")

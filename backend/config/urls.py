@@ -10,12 +10,43 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
-# Swagger/OpenAPI Schema
+# Swagger/OpenAPI Schema with JWT Authentication
 schema_view = get_schema_view(
     openapi.Info(
         title="TukioHub API",
         default_version='v1',
-        description="TukioHub - Kenyan Event Management System API Documentation",
+        description="""
+        TukioHub - Kenyan Event Management System API Documentation
+
+        ## Authentication
+
+        This API uses JWT (JSON Web Token) authentication.
+
+        ### How to authenticate in Swagger UI:
+
+        1. **Login** via the `/api/auth/login/` endpoint:
+           - Click "Try it out"
+           - Enter your email and password
+           - Click "Execute"
+           - Copy the `access` token from the response
+
+        2. **Authorize**:
+           - Click the **Authorize** button (🔓 or green lock icon) at the top
+           - In the "Value" field, enter: **`Bearer `** followed by your token
+           - **IMPORTANT**: You must type the word "Bearer" with a space after it!
+           - Example: `Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...`
+           - Click **Authorize**, then **Close**
+
+        3. **Test endpoints**:
+           - All authenticated endpoints will now work
+           - Lock icons (🔒) indicate which endpoints require authentication
+
+        ### Common Issues:
+
+        - **"Authentication credentials not provided"** → You forgot to include "Bearer " before the token
+        - **"Invalid token"** → Token expired or incorrect format
+        - **Token format**: `Bearer <space> <your_token_here>`
+        """,
         terms_of_service="https://www.tukiohub.com/terms/",
         contact=openapi.Contact(email="support@tukiohub.com"),
         license=openapi.License(name="Proprietary"),
