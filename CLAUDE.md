@@ -407,13 +407,63 @@ sudo journalctl -u event-api -f
 sudo journalctl -u celery -f
 ```
 
+## API Documentation and Testing
+
+### Swagger/OpenAPI Documentation
+
+**Location**: http://localhost:8000/swagger/
+
+The project uses `drf-yasg` for automatic API documentation. However, there's a **known incompatibility** between `drf-yasg` and `drf-nested-routers`:
+
+**Issue**: Nested routes (e.g., `/api/events/{id}/tickets/`) cause `AssertionError: duplicate Parameters found` in Swagger schema generation.
+
+**Solution Implemented** (in `config/urls.py`):
+- Created `CustomSchemaGenerator` that filters out nested route endpoints from Swagger
+- Added exception handling to gracefully skip endpoints with duplicate parameters
+- Nested routes remain **fully functional** in the API, just excluded from Swagger docs
+
+**Excluded from Swagger** (but working in API):
+- `/api/events/{id}/tickets/` - Ticket type management
+- `/api/events/{id}/promo-codes/` - Promo code management
+- `/api/events/{id}/addons/` - Event add-on management
+
+**Important**: If you add new nested routes in the future, they will automatically be excluded from Swagger but will work perfectly via the API.
+
+### Postman Collection
+
+**Location**: `backend/docs/TukioHub_API.postman_collection.json`
+
+A comprehensive Postman collection is maintained with **all API endpoints** including nested routes that Swagger cannot document.
+
+**Features**:
+- 45+ requests organized into 6 folders
+- Auto-saves tokens and IDs using test scripts
+- Pre-configured authentication
+- Ready-to-use examples
+
+**Import Instructions**:
+1. Open Postman
+2. Click **Import**
+3. Select `backend/docs/TukioHub_API.postman_collection.json`
+
+**CRITICAL**: When adding new API endpoints or modifying existing ones, **ALWAYS update the Postman collection** to reflect the changes. See `backend/docs/POSTMAN_GUIDE.md` for usage instructions.
+
+**Collection Structure**:
+- Authentication (4 requests)
+- Organizer - Events (11 requests)
+- Organizer - Ticket Types (7 requests)
+- Organizer - Promo Codes (6 requests)
+- Organizer - Event Add-ons (5 requests)
+- Public - Event Discovery (12 requests)
+
 ## Development Workflow
 
 1. Create feature branch: `git checkout -b feature/ticket-generation`
 2. Implement feature with tests
 3. Run tests: `pytest --cov=apps`
-4. Commit with descriptive message: `git commit -m "feat: implement ticket generation with QR codes"`
-5. Push and create PR: `git push origin feature/ticket-generation`
+4. **Update Postman collection** if API changes were made
+5. Commit with descriptive message: `git commit -m "feat: implement ticket generation with QR codes"`
+6. Push and create PR: `git push origin feature/ticket-generation`
 
 ## Reference Documentation
 
@@ -422,5 +472,6 @@ See detailed implementation guides:
 - `claude-code-implementation-guide.md` - Detailed implementation guide with prompts
 - `kenyan-event-management-system-roadmap.md` - Complete system roadmap and architecture
 
-**Last Updated**: December 15, 2025
+**Last Updated**: December 17, 2025
 **Project**: TukioHub - Kenyan Event Management System
+**Current Sprint**: Sprint 5 completed (Event Management System)
