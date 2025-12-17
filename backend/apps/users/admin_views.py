@@ -11,7 +11,9 @@ from .serializers import (
     AdminOrganizerListSerializer,
     AdminOrganizerDetailSerializer,
     OrganizerApprovalSerializer,
-    AdminUpdateOrganizerSerializer
+    AdminUpdateOrganizerSerializer,
+    AdminDashboardSerializer,
+    AdminAnalyticsSerializer
 )
 from .permissions import IsAdmin
 from .services import EmailService
@@ -78,6 +80,7 @@ class OrganizerApprovalView(generics.GenericAPIView):
     """
     serializer_class = OrganizerApprovalSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+    queryset = User.objects.filter(role=User.ORGANIZER)
 
     def post(self, request, pk):
         user = generics.get_object_or_404(User, pk=pk, role=User.ORGANIZER)
@@ -122,6 +125,7 @@ class AdminDashboardView(generics.GenericAPIView):
     GET /api/admin/dashboard/
     Get admin dashboard statistics
     """
+    serializer_class = AdminDashboardSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
@@ -192,6 +196,7 @@ class AdminAnalyticsView(generics.GenericAPIView):
     GET /api/admin/analytics/
     Get admin analytics and reports
     """
+    serializer_class = AdminAnalyticsSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):

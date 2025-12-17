@@ -145,6 +145,17 @@
 ### 🔧 Manual Testing Guide
 
 #### Prerequisites
+
+**1. Start MailDev (for email testing)**
+```bash
+# From project root
+docker compose up -d
+
+# MailDev Web Interface: http://localhost:1080
+# SMTP Server: localhost:1025
+```
+
+**2. Start Django Server**
 ```bash
 # Ensure server is running
 cd backend
@@ -266,7 +277,12 @@ curl -X GET http://localhost:8000/api/admin/dashboard/ \
 
 ### 🔍 Email Output Verification
 
-In development mode, emails are printed to the console. Look for:
+**View emails in MailDev Web Interface:**
+1. Open http://localhost:1080 in your browser
+2. All sent emails will appear in the MailDev inbox
+3. Click on any email to view HTML and plain text versions
+
+**Email Content to Verify:**
 
 **Approval Email:**
 ```

@@ -244,3 +244,22 @@ class AdminUpdateOrganizerSerializer(serializers.ModelSerializer):
         if value not in valid_statuses:
             raise serializers.ValidationError("Invalid verification status.")
         return value
+
+
+class AdminDashboardSerializer(serializers.Serializer):
+    """Serializer for admin dashboard response (for schema generation only)"""
+
+    organizer_stats = serializers.DictField(help_text="Organizer statistics")
+    user_stats = serializers.DictField(help_text="User statistics")
+    platform_stats = serializers.DictField(help_text="Platform statistics")
+    recent_pending_organizers = AdminOrganizerListSerializer(many=True)
+
+
+class AdminAnalyticsSerializer(serializers.Serializer):
+    """Serializer for admin analytics response (for schema generation only)"""
+
+    time_period = serializers.CharField(help_text="Time period for analytics")
+    organizer_registrations = serializers.ListField(help_text="Organizer registrations over time")
+    approval_rate = serializers.FloatField(help_text="Approval rate percentage")
+    email_verification_rate = serializers.FloatField(help_text="Email verification rate percentage")
+    metrics = serializers.DictField(help_text="Additional metrics")
