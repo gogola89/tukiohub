@@ -37,8 +37,8 @@ INSTALLED_APPS = [
 
     # TukioHub apps
     'apps.users.apps.UsersConfig',
+    'apps.events.apps.EventsConfig',
     # TODO: Enable these apps as they are developed in sprints
-    # 'apps.events',
     # 'apps.bookings',
     # 'apps.payments',
     # 'apps.analytics',
