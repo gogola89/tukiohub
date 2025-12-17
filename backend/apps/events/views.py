@@ -10,6 +10,8 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from .models import Event, TicketType, PromoCode, EventAddOn, EventImage
 from .serializers import (
@@ -229,6 +231,7 @@ class TicketTypeViewSet(viewsets.ModelViewSet):
 
     serializer_class = TicketTypeSerializer
     permission_classes = [IsAuthenticated, IsEventOrganizer]
+    swagger_schema = None  # Disable auto-schema to prevent duplicate parameters
 
     def get_queryset(self):
         """Get ticket types for the specified event"""
@@ -285,6 +288,7 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
 
     serializer_class = PromoCodeSerializer
     permission_classes = [IsAuthenticated, IsEventOrganizer]
+    swagger_schema = None  # Disable auto-schema to prevent duplicate parameters
 
     def get_queryset(self):
         """Get promo codes for the specified event"""
@@ -334,6 +338,7 @@ class EventAddOnViewSet(viewsets.ModelViewSet):
 
     serializer_class = EventAddOnSerializer
     permission_classes = [IsAuthenticated, IsEventOrganizer]
+    swagger_schema = None  # Disable auto-schema to prevent duplicate parameters
 
     def get_queryset(self):
         """Get add-ons for the specified event"""
