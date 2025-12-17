@@ -54,6 +54,10 @@ class EventViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get only events belonging to the authenticated organizer"""
+        # Handle Swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return Event.objects.none()
+
         return Event.objects.filter(
             organizer=self.request.user
         ).select_related('organizer').prefetch_related(
@@ -228,6 +232,10 @@ class TicketTypeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get ticket types for the specified event"""
+        # Handle Swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return TicketType.objects.none()
+
         event_id = self.kwargs.get('event_pk')
         return TicketType.objects.filter(
             event_id=event_id,
@@ -280,6 +288,10 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get promo codes for the specified event"""
+        # Handle Swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return PromoCode.objects.none()
+
         event_id = self.kwargs.get('event_pk')
         return PromoCode.objects.filter(
             event_id=event_id,
@@ -325,6 +337,10 @@ class EventAddOnViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get add-ons for the specified event"""
+        # Handle Swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return EventAddOn.objects.none()
+
         event_id = self.kwargs.get('event_pk')
         return EventAddOn.objects.filter(
             event_id=event_id,
