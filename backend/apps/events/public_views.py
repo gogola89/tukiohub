@@ -156,6 +156,10 @@ class EventCategoriesAPIView(generics.GenericAPIView):
 
     def get(self, request):
         """Return list of event categories"""
+        # Handle Swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return Response([], status=status.HTTP_200_OK)
+
         categories = get_event_categories()
         return Response(categories, status=status.HTTP_200_OK)
 

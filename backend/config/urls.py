@@ -9,6 +9,51 @@ from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from drf_yasg.generators import OpenAPISchemaGenerator
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class CustomSchemaGenerator(OpenAPISchemaGenerator):
+    """Custom schema generator that excludes nested routes to prevent duplicate parameter errors"""
+
+    def get_endpoints(self, request):
+        """Filter out nested router endpoints that cause duplicate parameter errors"""
+        endpoints = super().get_endpoints(request)
+
+        # Filter out nested routes that have event_pk in the path
+        # These routes work fine in the API but cause issues with Swagger
+        filtered_endpoints = {}
+        for path, value in endpoints.items():
+            # Exclude nested routes containing these patterns
+            # e.g., /api/events/{id}/tickets/{id}/, /api/events/{event_pk}/promo-codes/, etc.
+            exclude_patterns = [
+                'tickets',
+                'promo-codes',
+                'promo_codes',
+                'addons',
+                'event_pk',  # Nested router parameter
+                'upload_images',  # Custom action that might cause issues
+            ]
+
+            if any(pattern in path for pattern in exclude_patterns):
+                continue
+
+            filtered_endpoints[path] = value
+
+        return filtered_endpoints
+
+    def get_operation(self, view, path, prefix, method, components, request):
+        """Override to catch duplicate parameter errors and skip problematic endpoints"""
+        try:
+            return super().get_operation(view, path, prefix, method, components, request)
+        except AssertionError as e:
+            if "duplicate Parameters found" in str(e):
+                logger.warning(f"Skipping endpoint {method} {path} due to duplicate parameters")
+                return None
+            raise
+
 
 # Swagger/OpenAPI Schema with JWT Authentication
 schema_view = get_schema_view(
@@ -53,6 +98,7 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
+    generator_class=CustomSchemaGenerator,
 )
 
 urlpatterns = [
