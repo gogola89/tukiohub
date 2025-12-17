@@ -193,7 +193,12 @@ SWAGGER_SETTINGS = {
             'type': 'apiKey',
             'name': 'Authorization',
             'in': 'header',
-            'description': 'JWT Authorization header using the Bearer scheme. Example: "Authorization: Bearer {token}"'
+            'description': (
+                'JWT Authorization header using the Bearer scheme.\n\n'
+                'Enter your JWT token in the format: **Bearer &lt;token&gt;**\n\n'
+                'Example: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`\n\n'
+                '**Important:** You must include the word "Bearer" followed by a space before your token!'
+            )
         }
     },
     'USE_SESSION_AUTH': False,

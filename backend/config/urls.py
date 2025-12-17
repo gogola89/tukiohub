@@ -22,14 +22,30 @@ schema_view = get_schema_view(
 
         This API uses JWT (JSON Web Token) authentication.
 
-        **To authenticate:**
-        1. Login via `/api/auth/login/` with email and password
-        2. Copy the `access` token from the response
-        3. Click the **Authorize** button above
-        4. Enter: `Bearer <your_access_token>`
-        5. Click **Authorize** to save
+        ### How to authenticate in Swagger UI:
 
-        Example: `Bearer eyJ0eXAiOiJKV1QiLCJhbGc...`
+        1. **Login** via the `/api/auth/login/` endpoint:
+           - Click "Try it out"
+           - Enter your email and password
+           - Click "Execute"
+           - Copy the `access` token from the response
+
+        2. **Authorize**:
+           - Click the **Authorize** button (🔓 or green lock icon) at the top
+           - In the "Value" field, enter: **`Bearer `** followed by your token
+           - **IMPORTANT**: You must type the word "Bearer" with a space after it!
+           - Example: `Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...`
+           - Click **Authorize**, then **Close**
+
+        3. **Test endpoints**:
+           - All authenticated endpoints will now work
+           - Lock icons (🔒) indicate which endpoints require authentication
+
+        ### Common Issues:
+
+        - **"Authentication credentials not provided"** → You forgot to include "Bearer " before the token
+        - **"Invalid token"** → Token expired or incorrect format
+        - **Token format**: `Bearer <space> <your_token_here>`
         """,
         terms_of_service="https://www.tukiohub.com/terms/",
         contact=openapi.Contact(email="support@tukiohub.com"),
