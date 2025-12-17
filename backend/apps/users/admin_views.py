@@ -127,6 +127,7 @@ class AdminDashboardView(generics.GenericAPIView):
     """
     serializer_class = AdminDashboardSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+    filter_backends = []  # Disable filters for this view
 
     def get(self, request):
         # Get organizer statistics
@@ -198,6 +199,7 @@ class AdminAnalyticsView(generics.GenericAPIView):
     """
     serializer_class = AdminAnalyticsSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+    filter_backends = []  # Disable filters for this view
 
     def get(self, request):
         from datetime import timedelta

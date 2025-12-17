@@ -186,6 +186,21 @@ SIMPLE_JWT = {
     'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
+# Swagger/OpenAPI Settings
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': 'JWT Authorization header using the Bearer scheme. Example: "Authorization: Bearer {token}"'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'LOGIN_URL': '/api/auth/login/',
+    'LOGOUT_URL': '/api/auth/logout/',
+}
+
 
 # Redis & Caching
 REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')

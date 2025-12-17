@@ -263,3 +263,13 @@ class AdminAnalyticsSerializer(serializers.Serializer):
     approval_rate = serializers.FloatField(help_text="Approval rate percentage")
     email_verification_rate = serializers.FloatField(help_text="Email verification rate percentage")
     metrics = serializers.DictField(help_text="Additional metrics")
+
+
+class OrganizerDashboardSerializer(serializers.Serializer):
+    """Serializer for organizer dashboard response (for schema generation only)"""
+
+    user = UserSerializer(help_text="User profile information")
+    stats = serializers.DictField(help_text="Dashboard statistics")
+    verification_status = serializers.CharField(help_text="Organizer verification status")
+    email_verified = serializers.BooleanField(help_text="Email verification status")
+    profile_complete = serializers.BooleanField(help_text="Profile completion status")
