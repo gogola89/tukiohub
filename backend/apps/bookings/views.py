@@ -20,7 +20,8 @@ from .serializers import (
     TicketSerializer,
     TicketVerificationSerializer,
     TicketCheckInSerializer,
-    TicketTransferSerializer
+    TicketTransferSerializer,
+    CancelBookingSerializer
 )
 from .services import BookingService
 from .ticket_service import TicketService
@@ -115,6 +116,7 @@ class CancelBookingAPIView(generics.GenericAPIView):
     POST /api/bookings/<booking_reference>/cancel/
     """
 
+    serializer_class = CancelBookingSerializer
     permission_classes = [AllowAny]
 
     def post(self, request, booking_reference):

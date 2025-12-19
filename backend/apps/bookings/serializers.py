@@ -261,3 +261,9 @@ class TicketTransferSerializer(serializers.Serializer):
                 'new_attendee_email': 'Cannot transfer ticket to the same email address.'
             })
         return attrs
+
+
+class CancelBookingSerializer(serializers.Serializer):
+    """Serializer for booking cancellation"""
+
+    reason = serializers.CharField(required=False, allow_blank=True, max_length=500)

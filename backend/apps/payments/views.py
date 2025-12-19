@@ -324,12 +324,16 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         """Get transactions for authenticated user"""
+        # Handle Swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return Transaction.objects.none()
+
         user = self.request.user
 
         if user.is_staff or user.is_superuser:
             # Admin sees all transactions
             return Transaction.objects.all().select_related('event')
-        elif user.role == 'ORGANIZER':
+        elif hasattr(user, 'role') and user.role == 'ORGANIZER':
             # Organizer sees transactions for their events
             return Transaction.objects.filter(
                 event__organizer=user

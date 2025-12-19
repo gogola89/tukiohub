@@ -2,12 +2,14 @@
 Analytics API views for organizers
 """
 
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from apps.events.models import Event
 from apps.events.permissions import IsEventOrganizer
@@ -140,12 +142,21 @@ class OrganizerDashboardAPIView(generics.GenericAPIView):
 class ExportAttendeesCSVAPIView(generics.GenericAPIView):
     """
     Export event attendees to CSV
-    
+
     GET /api/analytics/events/<event_id>/export/attendees/
     """
-    
+
     permission_classes = [IsAuthenticated, IsEventOrganizer]
-    
+
+    @swagger_auto_schema(
+        operation_description="Export event attendees as CSV file",
+        responses={
+            200: openapi.Response(
+                description="CSV file download",
+                schema=openapi.Schema(type=openapi.TYPE_FILE)
+            )
+        }
+    )
     def get(self, request, event_id):
         """Export attendees CSV"""
         # Check permissions
@@ -165,12 +176,21 @@ class ExportAttendeesCSVAPIView(generics.GenericAPIView):
 class ExportSalesCSVAPIView(generics.GenericAPIView):
     """
     Export event sales to CSV
-    
+
     GET /api/analytics/events/<event_id>/export/sales/
     """
-    
+
     permission_classes = [IsAuthenticated, IsEventOrganizer]
-    
+
+    @swagger_auto_schema(
+        operation_description="Export event sales as CSV file",
+        responses={
+            200: openapi.Response(
+                description="CSV file download",
+                schema=openapi.Schema(type=openapi.TYPE_FILE)
+            )
+        }
+    )
     def get(self, request, event_id):
         """Export sales CSV"""
         # Check permissions

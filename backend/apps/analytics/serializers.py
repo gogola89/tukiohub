@@ -123,7 +123,10 @@ class AttendeeDemographicsSerializer(serializers.Serializer):
 
 class OrganizerDashboardSerializer(serializers.Serializer):
     """Serializer for organizer dashboard data"""
-    
+
+    class Meta:
+        ref_name = 'AnalyticsOrganizerDashboard'
+
     organizer_id = serializers.UUIDField()
     organizer_name = serializers.CharField()
     period_days = serializers.IntegerField()
