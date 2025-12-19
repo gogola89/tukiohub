@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 def process_successful_payment(self, transaction_id):
     """
     Process successful payment asynchronously
-    This will be expanded when booking system is implemented
 
     Args:
         transaction_id (str): UUID of the transaction
@@ -24,23 +23,34 @@ def process_successful_payment(self, transaction_id):
         4. Update ticket inventory
     """
     from .models import Transaction
+    from apps.bookings.models import Booking
+    from apps.bookings.services import BookingService
 
     try:
-        transaction = Transaction.objects.get(id=transaction_id)
+        transaction = Transaction.objects.select_related('booking').get(id=transaction_id)
 
         logger.info(f"Processing successful payment for transaction: {transaction.transaction_reference}")
 
-        # Check if transaction has booking reference
-        if transaction.booking_reference:
-            # This will be implemented in Sprint 12 (Booking System)
-            # For now, just log
-            logger.info(f"Transaction linked to booking: {transaction.booking_reference}")
+        # Check if transaction has linked booking
+        if transaction.booking:
+            booking = transaction.booking
 
-            # TODO: Implement booking confirmation
-            # - Update booking status to CONFIRMED
-            # - Generate tickets with QR codes
-            # - Send confirmation email
-            # - Send confirmation SMS
+            logger.info(f"Transaction linked to booking: {booking.booking_reference}")
+
+            # Update booking status to CONFIRMED
+            booking.status = Booking.STATUS_CONFIRMED
+            booking.payment_status = 'PAID'
+            booking.payment_method = transaction.payment_method
+            booking.transaction_id = str(transaction.id)
+            booking.save()
+
+            logger.info(f"Booking {booking.booking_reference} confirmed")
+
+            # Generate tickets and send notifications
+            from apps.bookings.tasks import generate_and_send_tickets_task
+            generate_and_send_tickets_task.delay(str(booking.id))
+
+            logger.info(f"Ticket generation task queued for booking {booking.booking_reference}")
 
         else:
             logger.warning(f"Transaction {transaction.transaction_reference} has no linked booking")
@@ -57,7 +67,7 @@ def process_successful_payment(self, transaction_id):
             'error': 'Transaction not found'
         }
     except Exception as e:
-        logger.error(f"Error processing payment: {str(e)}")
+        logger.error(f"Error processing payment: {str(e)}", exc_info=True)
         # Retry the task
         raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
 

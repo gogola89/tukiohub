@@ -39,10 +39,10 @@ INSTALLED_APPS = [
     'apps.users.apps.UsersConfig',
     'apps.events.apps.EventsConfig',
     'apps.payments',
+    'apps.bookings',
+    'apps.notifications',
     # TODO: Enable these apps as they are developed in sprints
-    # 'apps.bookings',
     # 'apps.analytics',
-    # 'apps.notifications',
 ]
 
 MIDDLEWARE = [

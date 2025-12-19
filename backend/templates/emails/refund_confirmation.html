@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Refund Confirmation</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #2196F3;">Refund Confirmation</h1>
+
+        <p>Dear {{ booking.attendee_name }},</p>
+
+        <p>Your refund request has been processed successfully.</p>
+
+        <div style="background-color: #e3f2fd; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #2196F3;">Refund Details:</h3>
+            <p><strong>Booking Reference:</strong> {{ booking.booking_reference }}</p>
+            <p><strong>Event:</strong> {{ booking.event.title }}</p>
+            <p><strong>Original Amount:</strong> KES {{ booking.final_amount }}</p>
+            <p><strong>Refund Amount:</strong> KES {{ refund_amount }}</p>
+        </div>
+
+        <div style="background-color: #fff9c4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 0;"><strong>⏰ Processing Time:</strong></p>
+            <p style="margin: 5px 0 0 0;">Your refund will be processed within 3-5 business days. The funds will be returned to your original payment method.</p>
+        </div>
+
+        <p>If you paid via:</p>
+        <ul>
+            <li><strong>M-Pesa:</strong> Refund will be sent to your M-Pesa number</li>
+            <li><strong>Card:</strong> Refund will appear on your card statement in 3-5 business days</li>
+        </ul>
+
+        <p style="margin-top: 30px;">
+            Best regards,<br>
+            <strong>TukioHub Team</strong>
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="font-size: 12px; color: #777;">
+            If you don't receive your refund within the stated timeframe, please contact us at support@tukiohub.com
+        </p>
+    </div>
+</body>
+</html>

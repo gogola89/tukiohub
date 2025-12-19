@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket Transfer</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        {% if is_new_owner %}
+        <h1 style="color: #4CAF50;">You've Received a Ticket!</h1>
+
+        <p>Dear {{ ticket.attendee_name }},</p>
+
+        <p>Great news! A ticket for <strong>{{ event.title }}</strong> has been transferred to you.</p>
+
+        <div style="background-color: #e8f5e9; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #4CAF50;">Your New Ticket:</h3>
+            <p><strong>Event:</strong> {{ event.title }}</p>
+            <p><strong>Date & Time:</strong> {{ event.start_datetime|date:"l, F d, Y \a\t h:i A" }}</p>
+            <p><strong>Venue:</strong> {{ event.venue_name }}</p>
+            <p><strong>Ticket Type:</strong> {{ ticket.ticket_type.name }}</p>
+            <p><strong>Ticket Code:</strong> {{ ticket.ticket_code }}</p>
+        </div>
+
+        <p><strong>Your ticket is attached to this email as a PDF file.</strong></p>
+
+        <p>Please present your ticket (digital or printed) at the venue entrance for check-in.</p>
+
+        <p>We look forward to seeing you at the event!</p>
+
+        {% else %}
+        <h1 style="color: #FF9800;">Ticket Transfer Confirmation</h1>
+
+        <p>Dear valued customer,</p>
+
+        <p>This is to confirm that your ticket for <strong>{{ event.title }}</strong> has been successfully transferred.</p>
+
+        <div style="background-color: #fff3e0; padding: 15px; border-left: 4px solid #FF9800; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #FF9800;">Transfer Details:</h3>
+            <p><strong>Event:</strong> {{ event.title }}</p>
+            <p><strong>Ticket Code:</strong> {{ ticket.ticket_code }}</p>
+            <p><strong>New Owner:</strong> {{ ticket.attendee_name }}</p>
+            <p><strong>Transfer Date:</strong> {{ ticket.updated_at|date:"F d, Y \a\t h:i A" }}</p>
+        </div>
+
+        <p>The ticket is no longer valid for you and has been sent to the new owner.</p>
+
+        <p>If you did not authorize this transfer, please contact us immediately.</p>
+        {% endif %}
+
+        <p style="margin-top: 30px;">
+            Best regards,<br>
+            <strong>TukioHub Team</strong>
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="font-size: 12px; color: #777;">
+            If you have any questions, please contact the event organizer or visit our website.
+        </p>
+    </div>
+</body>
+</html>

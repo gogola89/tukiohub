@@ -37,18 +37,14 @@ class Transaction(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    # Booking reference (can be null initially, linked after booking creation)
-    # This will be uncommented when bookings app is created in Sprint 12
-    # booking = models.ForeignKey(
-    #     'bookings.Booking',
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True,
-    #     related_name='transactions'
-    # )
-
-    # Temporary field to store booking reference until bookings app is created
-    booking_reference = models.CharField(max_length=100, null=True, blank=True)
+    # Booking reference (linked after booking creation)
+    booking = models.ForeignKey(
+        'bookings.Booking',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transactions'
+    )
 
     # Event reference for tracking
     event = models.ForeignKey(

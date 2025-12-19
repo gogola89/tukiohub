@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Event Reminder</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #FF9800;">Event Reminder</h1>
+
+        <p>Dear {{ booking.attendee_name }},</p>
+
+        <p>This is a friendly reminder that your event <strong>{{ event.title }}</strong> is coming up in <strong>{{ hours_before }} hours</strong>!</p>
+
+        <div style="background-color: #fff3e0; padding: 15px; border-left: 4px solid #FF9800; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #FF9800;">Event Details:</h3>
+            <p><strong>Event:</strong> {{ event.title }}</p>
+            <p><strong>Date & Time:</strong> {{ event.start_datetime|date:"l, F d, Y \a\t h:i A" }}</p>
+            <p><strong>Venue:</strong> {{ event.venue_name }}</p>
+            {% if event.venue_address %}
+            <p><strong>Address:</strong> {{ event.venue_address }}</p>
+            {% endif %}
+        </div>
+
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0;">Your Booking:</h3>
+            <p><strong>Booking Reference:</strong> {{ booking.booking_reference }}</p>
+            <p><strong>Number of Tickets:</strong> {{ booking.tickets.count }}</p>
+        </div>
+
+        <p><strong>Important Reminders:</strong></p>
+        <ul>
+            <li>Please arrive at least 30 minutes before the event starts</li>
+            <li>Have your ticket ready (digital or printed) for check-in</li>
+            <li>Check your email for your ticket PDFs if you haven't already</li>
+        </ul>
+
+        <p>We look forward to seeing you at the event!</p>
+
+        <p style="margin-top: 30px;">
+            Best regards,<br>
+            <strong>TukioHub Team</strong>
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="font-size: 12px; color: #777;">
+            If you have any questions, please contact the event organizer or visit our website.
+        </p>
+    </div>
+</body>
+</html>

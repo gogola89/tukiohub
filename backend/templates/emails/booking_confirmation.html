@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Booking Confirmation</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #4CAF50;">Booking Confirmed!</h1>
+
+        <p>Dear {{ booking.attendee_name }},</p>
+
+        <p>Thank you for your booking! Your tickets for <strong>{{ event.title }}</strong> have been confirmed.</p>
+
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0;">Booking Details:</h3>
+            <p><strong>Booking Reference:</strong> {{ booking.booking_reference }}</p>
+            <p><strong>Event:</strong> {{ event.title }}</p>
+            <p><strong>Date & Time:</strong> {{ event.start_datetime|date:"l, F d, Y \a\t h:i A" }}</p>
+            <p><strong>Venue:</strong> {{ event.venue_name }}</p>
+            <p><strong>Total Tickets:</strong> {{ total_tickets }}</p>
+            <p><strong>Amount Paid:</strong> KES {{ booking.final_amount }}</p>
+        </div>
+
+        <p><strong>Your tickets are attached to this email as PDF files.</strong></p>
+
+        <p>Please present your ticket (digital or printed) at the venue entrance for check-in.</p>
+
+        <p>We look forward to seeing you at the event!</p>
+
+        <p style="margin-top: 30px;">
+            Best regards,<br>
+            <strong>TukioHub Team</strong>
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="font-size: 12px; color: #777;">
+            If you have any questions, please contact the event organizer or visit our website.
+        </p>
+    </div>
+</body>
+</html>
