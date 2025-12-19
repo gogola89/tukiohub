@@ -108,6 +108,7 @@ urlpatterns = [
     # API endpoints
     path('api/', include('apps.users.urls')),
     path('api/', include('apps.events.urls')),
+    path('api/payments/', include('apps.payments.urls')),
 
     # API Documentation
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),

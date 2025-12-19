@@ -318,18 +318,86 @@ Transaction statuses:
 - Status: PENDING, COMPLETED, FAILED, CANCELLED
 - Foreign key to Booking (can be null initially)
 
-## Django Admin Customization
+## Django Admin Panel
 
-Customize admin for better management:
-```python
-# apps/events/admin.py
-@admin.register(Event)
-class EventAdmin(admin.ModelAdmin):
-    list_display = ['title', 'organizer', 'start_datetime', 'status']
-    list_filter = ['status', 'category', 'created_at']
-    search_fields = ['title', 'description']
-    prepopulated_fields = {'slug': ('title',)}
-```
+**Access**: `http://localhost:8000/admin/` or via ngrok URL
+
+**Complete Guide**: See `backend/ADMIN_GUIDE.md` for comprehensive documentation
+
+### Available Management Interfaces
+
+All models are registered in Django Admin with full CRUD capabilities:
+
+**Users Management** (`apps/users/admin.py`):
+- View and manage all users (organizers, admins)
+- Approve/reject organizers
+- Manage verification status
+- View verification documents
+- Control access permissions
+
+**Events Management** (`apps/events/admin.py`):
+- Comprehensive event management with inline editing
+- Ticket types, promo codes, add-ons, and images managed inline
+- Real-time statistics (tickets sold, availability, pricing)
+- Featured image previews
+- Filter by status, category, date
+- Search across title, description, venue, organizer
+
+**Payments Management** (`apps/payments/admin.py`):
+- View all transactions (M-Pesa and card)
+- Track payment status and receipts
+- Monitor M-Pesa callbacks
+- Search by transaction reference, phone, event
+- Read-only for audit trail
+
+### Key Admin Features
+
+**Inline Editing**:
+- Edit related models without leaving parent page
+- Add multiple ticket types to event at once
+- Manage promo codes and add-ons inline
+- Upload multiple event images
+
+**Advanced Filtering**:
+- Multi-field filters
+- Date range filtering
+- Status-based filtering
+- Category and role filtering
+
+**Search Capabilities**:
+- Full-text search across multiple fields
+- Case-insensitive matching
+- Partial match support
+
+**Optimized Performance**:
+- Queries optimized with `select_related()` and `prefetch_related()`
+- Pagination for large datasets
+- Efficient database access
+
+### Quick Admin Tasks
+
+**Create Event**:
+1. Events > Add Event
+2. Fill basic info, upload image
+3. Save and continue editing
+4. Add ticket types inline
+5. Publish when ready
+
+**Approve Organizer**:
+1. Users > Click organizer
+2. Change verification_status to "APPROVED"
+3. Save
+
+**Monitor Payments**:
+1. Payments > Transactions
+2. Filter by status/date
+3. View M-Pesa receipts and callbacks
+
+**Create Promo Code**:
+1. Events > Promo Codes > Add
+2. Enter code, discount type/value
+3. Set validity period
+4. Save
 
 ## Environment Variables
 
@@ -472,6 +540,31 @@ See detailed implementation guides:
 - `claude-code-implementation-guide.md` - Detailed implementation guide with prompts
 - `kenyan-event-management-system-roadmap.md` - Complete system roadmap and architecture
 
-**Last Updated**: December 17, 2025
+## M-Pesa Payment Integration
+
+**Documentation**: See `backend/MPESA_TESTING_GUIDE.md` for complete testing guide
+
+**Sandbox Credentials** (configured in `.env`):
+- Consumer Key: `IFAbZqyAW8db76xQQxhp9tdLwZ5bwjf2eACO2i3pjx60MmE3`
+- Consumer Secret: `7H9smYP8nAltoVQWxFcfyj8fScZ6ez4mW2OLpqRiNzjl5L9yhiVCRaQNXGS8UH11`
+- Shortcode: `174379` (Sandbox default)
+- Passkey: `bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919`
+
+**Key Endpoints**:
+- `POST /api/payments/mpesa/initiate/` - Initiate STK Push
+- `POST /api/payments/mpesa/callback/` - Receive M-Pesa callbacks
+- `GET /api/payments/status/<reference>/` - Check payment status
+- `GET /api/payments/transactions/` - List transactions
+
+**Testing with ngrok** (for callbacks):
+1. Run: `ngrok http 8000`
+2. Update `.env`: `MPESA_CALLBACK_URL=https://your-url.ngrok-free.app/api/payments/mpesa/callback/`
+3. Update `CSRF_TRUSTED_ORIGINS` in `config/settings/development.py`
+4. Restart Django server
+
+**Postman Collection**: `backend/docs/TukioHub_MpesaPayments.postman_collection.json`
+
+**Last Updated**: December 19, 2024
 **Project**: TukioHub - Kenyan Event Management System
-**Current Sprint**: Sprint 5 completed (Event Management System)
+**Current Sprint**: Sprint 10 completed (M-Pesa Payment Integration)
+**Status**: Production-ready backend with comprehensive admin interface

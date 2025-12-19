@@ -153,14 +153,14 @@ class Event(models.Model):
     def is_sold_out(self):
         """Check if event is sold out"""
         total_capacity = sum(
-            ticket_type.quantity_available
+            ticket_type.quantity_available or 0
             for ticket_type in self.ticket_types.all()
         )
         total_sold = sum(
-            ticket_type.quantity_sold
+            ticket_type.quantity_sold or 0
             for ticket_type in self.ticket_types.all()
         )
-        return total_sold >= total_capacity
+        return total_sold >= total_capacity if total_capacity > 0 else False
 
     @property
     def available_tickets(self):
@@ -239,16 +239,20 @@ class TicketType(models.Model):
 
     def clean(self):
         """Validate ticket type fields"""
-        if self.sales_end_date <= self.sales_start_date:
-            raise ValidationError('Sales end date must be after sales start date.')
+        if self.sales_end_date and self.sales_start_date:
+            if self.sales_end_date <= self.sales_start_date:
+                raise ValidationError('Sales end date must be after sales start date.')
 
-        if self.quantity_sold > self.quantity_available:
-            raise ValidationError('Quantity sold cannot exceed quantity available.')
+        if self.quantity_sold is not None and self.quantity_available is not None:
+            if self.quantity_sold > self.quantity_available:
+                raise ValidationError('Quantity sold cannot exceed quantity available.')
 
     @property
     def available_quantity(self):
         """Get available quantity for this ticket type"""
-        return self.quantity_available - self.quantity_sold
+        available = self.quantity_available if self.quantity_available is not None else 0
+        sold = self.quantity_sold if self.quantity_sold is not None else 0
+        return available - sold
 
     def is_available(self):
         """Check if ticket type is available for sale"""
@@ -304,14 +308,16 @@ class PromoCode(models.Model):
 
     def clean(self):
         """Validate promo code fields"""
-        if self.valid_until <= self.valid_from:
-            raise ValidationError('Valid until date must be after valid from date.')
+        if self.valid_until and self.valid_from:
+            if self.valid_until <= self.valid_from:
+                raise ValidationError('Valid until date must be after valid from date.')
 
-        if self.discount_type == self.PERCENTAGE and self.discount_value > 100:
+        if self.discount_type == self.PERCENTAGE and self.discount_value and self.discount_value > 100:
             raise ValidationError('Percentage discount cannot exceed 100%.')
 
-        if self.usage_limit and self.times_used > self.usage_limit:
-            raise ValidationError('Times used cannot exceed usage limit.')
+        if self.usage_limit and self.times_used is not None:
+            if self.times_used > self.usage_limit:
+                raise ValidationError('Times used cannot exceed usage limit.')
 
     def is_valid(self):
         """Check if promo code is valid"""

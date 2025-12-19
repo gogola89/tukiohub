@@ -38,9 +38,9 @@ INSTALLED_APPS = [
     # TukioHub apps
     'apps.users.apps.UsersConfig',
     'apps.events.apps.EventsConfig',
+    'apps.payments',
     # TODO: Enable these apps as they are developed in sprints
     # 'apps.bookings',
-    # 'apps.payments',
     # 'apps.analytics',
     # 'apps.notifications',
 ]
@@ -204,6 +204,8 @@ SWAGGER_SETTINGS = {
     'USE_SESSION_AUTH': False,
     'LOGIN_URL': '/api/auth/login/',
     'LOGOUT_URL': '/api/auth/logout/',
+    'DEFAULT_MODEL_RENDERING': 'example',
+    'SUPPORTED_SUBMIT_METHODS': ['get', 'post', 'put', 'delete', 'patch'],
 }
 
 

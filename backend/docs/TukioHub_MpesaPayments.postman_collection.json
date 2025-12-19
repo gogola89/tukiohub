@@ -1,0 +1,200 @@
+{
+  "info": {
+    "name": "TukioHub - M-Pesa Payments",
+    "description": "Collection for testing M-Pesa payment integration in TukioHub",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transaction_reference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "checkout_request_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "event_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Initiate M-Pesa Payment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Save transaction reference for later use",
+              "if (pm.response.code === 200) {",
+              "    const jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('transaction_reference', jsonData.transaction_reference);",
+              "    pm.collectionVariables.set('checkout_request_id', jsonData.checkout_request_id);",
+              "    console.log('Transaction Reference:', jsonData.transaction_reference);",
+              "    console.log('Checkout Request ID:', jsonData.checkout_request_id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"event_id\": \"{{event_id}}\",\n    \"phone_number\": \"254708374149\",\n    \"amount\": 100.00,\n    \"account_reference\": \"TEST_BOOKING_001\",\n    \"transaction_desc\": \"TukioHub Event Ticket Payment\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/payments/mpesa/initiate/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "mpesa", "initiate", ""]
+        },
+        "description": "Initiate M-Pesa STK Push payment for event ticket"
+      },
+      "response": []
+    },
+    {
+      "name": "2. Check Payment Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/payments/status/{{transaction_reference}}/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "status", "{{transaction_reference}}", ""]
+        },
+        "description": "Check the status of a payment transaction"
+      },
+      "response": []
+    },
+    {
+      "name": "3. Simulate M-Pesa Callback (Success)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"Body\": {\n        \"stkCallback\": {\n            \"MerchantRequestID\": \"test-merchant-id\",\n            \"CheckoutRequestID\": \"{{checkout_request_id}}\",\n            \"ResultCode\": 0,\n            \"ResultDesc\": \"The service request is processed successfully.\",\n            \"CallbackMetadata\": {\n                \"Item\": [\n                    {\n                        \"Name\": \"Amount\",\n                        \"Value\": 100\n                    },\n                    {\n                        \"Name\": \"MpesaReceiptNumber\",\n                        \"Value\": \"QGR1234567\"\n                    },\n                    {\n                        \"Name\": \"TransactionDate\",\n                        \"Value\": 20231219103000\n                    },\n                    {\n                        \"Name\": \"PhoneNumber\",\n                        \"Value\": 254708374149\n                    }\n                ]\n            }\n        }\n    }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/payments/mpesa/callback/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "mpesa", "callback", ""]
+        },
+        "description": "Simulate successful M-Pesa callback (for sandbox testing)"
+      },
+      "response": []
+    },
+    {
+      "name": "4. Simulate M-Pesa Callback (Cancelled)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"Body\": {\n        \"stkCallback\": {\n            \"MerchantRequestID\": \"test-merchant-id\",\n            \"CheckoutRequestID\": \"{{checkout_request_id}}\",\n            \"ResultCode\": 1032,\n            \"ResultDesc\": \"Request cancelled by user\"\n        }\n    }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/payments/mpesa/callback/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "mpesa", "callback", ""]
+        },
+        "description": "Simulate user cancelling payment"
+      },
+      "response": []
+    },
+    {
+      "name": "5. Simulate M-Pesa Callback (Failed - Insufficient Funds)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"Body\": {\n        \"stkCallback\": {\n            \"MerchantRequestID\": \"test-merchant-id\",\n            \"CheckoutRequestID\": \"{{checkout_request_id}}\",\n            \"ResultCode\": 1,\n            \"ResultDesc\": \"The balance is insufficient for the transaction\"\n        }\n    }\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/payments/mpesa/callback/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "mpesa", "callback", ""]
+        },
+        "description": "Simulate insufficient funds error"
+      },
+      "response": []
+    },
+    {
+      "name": "6. List All Transactions (Requires Auth)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/payments/transactions/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "transactions", ""]
+        },
+        "description": "List all transactions (organizer sees their events' transactions, admin sees all)"
+      },
+      "response": []
+    },
+    {
+      "name": "7. Get Transaction Details (Requires Auth)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/payments/transactions/{{transaction_id}}/",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "transactions", "{{transaction_id}}", ""]
+        },
+        "description": "Get detailed information about a specific transaction"
+      },
+      "response": []
+    }
+  ]
+}

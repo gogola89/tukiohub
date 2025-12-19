@@ -9,6 +9,17 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+# CSRF Trusted Origins (for ngrok and local development)
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'https://85aca470b927.ngrok-free.app',
+]
+
+# Secure Proxy SSL Header (for ngrok and reverse proxies)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
 # CORS Settings for development
 CORS_ALLOW_ALL_ORIGINS = True
 
