@@ -90,6 +90,7 @@ class TransactionListSerializer(serializers.ModelSerializer):
     Serializer for transaction list
     """
     event_title = serializers.CharField(source='event.title', read_only=True)
+    booking_reference = serializers.CharField(source='booking.booking_reference', read_only=True, allow_null=True)
 
     class Meta:
         model = Transaction
@@ -106,6 +107,7 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
     Serializer for detailed transaction view
     """
     event = serializers.SerializerMethodField()
+    booking_reference = serializers.CharField(source='booking.booking_reference', read_only=True, allow_null=True)
 
     class Meta:
         model = Transaction

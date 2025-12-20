@@ -18,7 +18,8 @@ from .serializers import (
     InitiateMpesaPaymentSerializer,
     TransactionStatusSerializer,
     TransactionListSerializer,
-    TransactionDetailSerializer
+    TransactionDetailSerializer,
+    MpesaCallbackSerializer
 )
 from .mpesa_service import mpesa_service
 from apps.events.models import Event
@@ -138,6 +139,7 @@ class MpesaCallbackAPIView(generics.GenericAPIView):
     """
 
     permission_classes = [AllowAny]
+    serializer_class = MpesaCallbackSerializer
 
     def post(self, request):
         """
