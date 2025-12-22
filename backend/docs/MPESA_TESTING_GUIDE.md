@@ -329,7 +329,7 @@ Replace `TH12AB34CD` with your actual transaction reference.
 ### Scenario 5: Payment Timeout
 
 1. Initiate payment
-2. No callback received within 5 minutes
+2. No callback received within 15 minutes (allowing time for user to enter PIN)
 3. Celery task `check_pending_transactions` runs
 4. Queries M-Pesa for status
 5. Updates transaction accordingly
@@ -428,9 +428,9 @@ Navigate to **Payments > Transactions** to view all transactions with full detai
    celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
    ```
 
-4. **Configure Periodic Tasks** in Django Admin:
-   - `check_pending_transactions` - Every 5 minutes
-   - `cleanup_old_pending_transactions` - Daily
+4. **Configure Periodic Tasks** (Automatically set up via migration):
+   - `check_pending_transactions` - Every 5 minutes (checks transactions older than 15 minutes)
+   - `cleanup_old_pending_transactions` - Daily (cleans up transactions older than 24 hours)
 
 5. **Setup Monitoring:**
    - Sentry for error tracking

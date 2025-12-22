@@ -79,7 +79,7 @@ def check_pending_transactions():
     Run every 5 minutes via Celery Beat
 
     Queries M-Pesa for transactions that are still pending
-    after 5 minutes and updates their status
+    after 15 minutes and updates their status
     """
     from .models import Transaction
     from .mpesa_service import mpesa_service
@@ -87,14 +87,14 @@ def check_pending_transactions():
     from datetime import timedelta
 
     try:
-        # Get transactions pending for more than 5 minutes
-        five_minutes_ago = timezone.now() - timedelta(minutes=5)
+        # Get transactions pending for more than 15 minutes (allowing time for user to enter PIN)
+        fifteen_minutes_ago = timezone.now() - timedelta(minutes=15)
 
         pending_transactions = Transaction.objects.filter(
             status=Transaction.PENDING,
             payment_method=Transaction.MPESA,
             checkout_request_id__isnull=False,
-            created_at__lte=five_minutes_ago
+            created_at__lte=fifteen_minutes_ago
         )[:50]  # Limit to 50 at a time
 
         logger.info(f"Checking {pending_transactions.count()} pending transactions")

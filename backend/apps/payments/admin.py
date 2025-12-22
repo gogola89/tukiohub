@@ -13,6 +13,7 @@ class TransactionAdmin(admin.ModelAdmin):
     list_display = [
         'transaction_reference',
         'event',
+        'booking_reference',
         'amount',
         'payment_method',
         'status',
@@ -56,7 +57,7 @@ class TransactionAdmin(admin.ModelAdmin):
                 'id',
                 'transaction_reference',
                 'event',
-                'booking_reference',
+                'booking',
                 'amount',
                 'payment_method',
                 'status'
@@ -90,6 +91,14 @@ class TransactionAdmin(admin.ModelAdmin):
             )
         }),
     )
+
+    def booking_reference(self, obj):
+        """Display booking reference from related booking"""
+        if obj.booking:
+            return obj.booking.booking_reference
+        return '-'
+
+    booking_reference.short_description = 'Booking Reference'
 
     def has_add_permission(self, request):
         """Disable manual addition of transactions"""

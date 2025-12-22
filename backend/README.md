@@ -91,8 +91,10 @@ celery -A config worker -l info
 
 Start Celery Beat (scheduled tasks):
 ```bash
-celery -A config beat -l info
+celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 ```
+
+For production deployment, see [CELERY_SETUP.md](CELERY_SETUP.md) for detailed instructions on running Celery workers and beat scheduler as system services.
 
 ### Django Commands
 

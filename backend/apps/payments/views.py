@@ -243,7 +243,6 @@ class MpesaCallbackAPIView(generics.GenericAPIView):
                 logger.info(f"Payment successful for transaction: {transaction.transaction_reference}")
 
                 # Trigger booking confirmation (async task)
-                # This will be implemented when we create the booking system
                 from .tasks import process_successful_payment
                 process_successful_payment.delay(str(transaction.id))
 
