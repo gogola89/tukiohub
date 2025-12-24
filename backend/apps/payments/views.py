@@ -23,6 +23,7 @@ from .serializers import (
 )
 from .mpesa_service import mpesa_service
 from apps.events.models import Event
+from apps.bookings.models import Booking
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,14 @@ class InitiateMpesaPaymentAPIView(generics.GenericAPIView):
         # Generate unique transaction reference
         transaction_reference = f"TH{uuid.uuid4().hex[:8].upper()}"
 
+        # Try to find a booking by account_reference and link it to the transaction
+        booking = None
+        try:
+            booking = Booking.objects.get(booking_reference=account_reference)
+            logger.info(f"Found booking {account_reference} to link to transaction")
+        except Booking.DoesNotExist:
+            logger.info(f"No booking found with reference {account_reference}, proceeding without booking link")
+
         # Create pending transaction
         transaction = Transaction.objects.create(
             event=event,
@@ -80,6 +89,7 @@ class InitiateMpesaPaymentAPIView(generics.GenericAPIView):
             payment_method=Transaction.MPESA,
             transaction_reference=transaction_reference,
             status=Transaction.PENDING,
+            booking=booking,  # Link booking if found
             metadata={
                 'account_reference': account_reference,
                 'transaction_desc': transaction_desc,
@@ -200,14 +210,6 @@ class MpesaCallbackAPIView(generics.GenericAPIView):
                     'ResultDesc': 'Transaction not found'
                 }, status=status.HTTP_404_NOT_FOUND)
 
-            # Check if transaction is already processed
-            if transaction.status in [Transaction.COMPLETED, Transaction.FAILED]:
-                logger.warning(f"Transaction already processed: {transaction.transaction_reference}")
-                return Response({
-                    'ResultCode': 0,
-                    'ResultDesc': 'Accepted (already processed)'
-                }, status=status.HTTP_200_OK)
-
             # Process based on result code
             if result_code == 0:
                 # Success - extract metadata
@@ -226,34 +228,37 @@ class MpesaCallbackAPIView(generics.GenericAPIView):
                 transaction_date = metadata.get('TransactionDate')
                 phone_number = metadata.get('PhoneNumber')
 
-                # Mark transaction as completed
-                transaction.mark_as_completed(
-                    receipt_number=mpesa_receipt_number,
-                    result_code=str(result_code),
-                    result_description=result_desc
-                )
+                # Only mark as completed if not already completed
+                if not transaction.is_successful:
+                    # Mark transaction as completed
+                    transaction.mark_as_completed(
+                        receipt_number=mpesa_receipt_number,
+                        result_code=str(result_code),
+                        result_description=result_desc
+                    )
 
-                # Update metadata
-                transaction.metadata.update({
-                    'callback_metadata': metadata,
-                    'transaction_date': transaction_date
-                })
-                transaction.save()
+                    # Update metadata
+                    transaction.metadata.update({
+                        'callback_metadata': metadata,
+                        'transaction_date': transaction_date
+                    })
+                    transaction.save()
 
                 logger.info(f"Payment successful for transaction: {transaction.transaction_reference}")
 
-                # Trigger booking confirmation (async task)
+                # Trigger booking confirmation (async task) - always trigger to ensure booking is confirmed
                 from .tasks import process_successful_payment
                 process_successful_payment.delay(str(transaction.id))
 
             else:
-                # Failed or cancelled
-                transaction.mark_as_failed(
-                    result_code=str(result_code),
-                    result_description=result_desc
-                )
+                # Failed or cancelled - only update if not already failed
+                if transaction.status not in [Transaction.FAILED, Transaction.COMPLETED]:
+                    transaction.mark_as_failed(
+                        result_code=str(result_code),
+                        result_description=result_desc
+                    )
 
-                logger.info(f"Payment failed for transaction: {transaction.transaction_reference}")
+                    logger.info(f"Payment failed for transaction: {transaction.transaction_reference}")
 
             # Send acknowledgment to M-Pesa
             return Response({
