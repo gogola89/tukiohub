@@ -142,11 +142,15 @@ class Event(models.Model):
     @property
     def is_upcoming(self):
         """Check if event is upcoming"""
+        if self.start_datetime is None:
+            return False
         return self.start_datetime > timezone.now()
 
     @property
     def is_past(self):
         """Check if event has ended"""
+        if self.end_datetime is None:
+            return False
         return self.end_datetime < timezone.now()
 
     @property
