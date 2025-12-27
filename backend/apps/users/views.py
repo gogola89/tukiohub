@@ -503,17 +503,18 @@ class WalletView(generics.GenericAPIView):
             )
 
             if result.get('success'):
-                # Update transaction with M-Pesa details
-                transaction.checkout_request_id = result.get('CheckoutRequestID')
-                transaction.merchant_request_id = result.get('MerchantRequestID')
+                # Update transaction with M-Pesa details (note: mpesa_service returns lowercase keys)
+                transaction.checkout_request_id = result.get('checkout_request_id')
+                transaction.merchant_request_id = result.get('merchant_request_id')
                 transaction.save()
 
                 logger.info(f"M-Pesa STK Push initiated for wallet top-up: {transaction_reference}")
+                logger.info(f"Transaction updated with CheckoutRequestID: {transaction.checkout_request_id}")
 
                 return Response({
                     'message': 'M-Pesa payment initiated. Please enter your PIN.',
                     'transaction_reference': transaction_reference,
-                    'checkout_request_id': result.get('CheckoutRequestID'),
+                    'checkout_request_id': result.get('checkout_request_id'),
                     'amount': amount,
                     'phone_number': phone_number
                 }, status=status.HTTP_200_OK)
