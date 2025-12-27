@@ -186,24 +186,16 @@ class ConfirmWalletPaymentAPIView(generics.GenericAPIView):
             # Confirm booking (this will deduct from wallet)
             booking = BookingService.confirm_booking(booking.id, payment_method='WALLET')
 
-            # Generate tickets
-            tickets = TicketService.generate_tickets_for_booking(booking.id)
-
-            # Send booking confirmation email with ticket PDFs
-            from apps.notifications.email_service import EmailService
-            email_sent = EmailService.send_booking_confirmation(booking, tickets)
-
-            if email_sent:
-                logger.info(f"Booking confirmation email sent for {booking.booking_reference}")
-            else:
-                logger.error(f"Failed to send booking confirmation email for {booking.booking_reference}")
+            # Queue ticket generation and email sending (asynchronous)
+            from apps.bookings.tasks import generate_and_send_tickets_task
+            generate_and_send_tickets_task.delay(str(booking.id))
 
             logger.info(f"Wallet payment confirmed for booking {booking.booking_reference}")
+            logger.info(f"Ticket generation and email task queued for booking {booking.booking_reference}")
 
             return Response({
-                'message': 'Payment confirmed successfully',
+                'message': 'Payment confirmed successfully. Tickets will be sent to your email shortly.',
                 'booking': BookingDetailSerializer(booking).data,
-                'tickets_generated': len(tickets)
             }, status=status.HTTP_200_OK)
 
         except (DjangoValidationError, ValidationError) as e:

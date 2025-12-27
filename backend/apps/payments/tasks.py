@@ -48,22 +48,19 @@ def process_successful_payment(self, transaction_id):
                 transaction_type=WalletTransaction.DEPOSIT
             )
 
-            logger.info(f"Wallet top-up successful. New balance: {attendee.wallet_balance}")
+            new_balance = attendee.wallet_balance
+            logger.info(f"Wallet top-up successful. New balance: {new_balance}")
 
-            # Send wallet deposit confirmation email
-            from apps.notifications.email_service import EmailService
-            email_sent = EmailService.send_wallet_deposit_confirmation(
-                attendee=attendee,
-                amount=amount,
-                new_balance=attendee.wallet_balance,
+            # Queue wallet deposit confirmation email (asynchronous)
+            send_wallet_deposit_email_task.delay(
+                attendee_id=str(attendee.id),
+                amount=float(amount),
+                new_balance=float(new_balance),
                 transaction_reference=transaction.transaction_reference,
                 mpesa_receipt=transaction.mpesa_receipt_number
             )
 
-            if email_sent:
-                logger.info(f"Wallet deposit confirmation email sent to {attendee.email}")
-            else:
-                logger.error(f"Failed to send wallet deposit confirmation email to {attendee.email}")
+            logger.info(f"Wallet deposit confirmation email task queued for {attendee.email}")
 
         # Check if transaction has linked booking
         elif transaction.booking:
@@ -80,19 +77,11 @@ def process_successful_payment(self, transaction_id):
 
             logger.info(f"Booking {booking.booking_reference} confirmed")
 
-            # Generate tickets
-            from apps.bookings.ticket_service import TicketService
-            tickets = TicketService.generate_tickets_for_booking(booking.id)
-            logger.info(f"Generated {len(tickets)} tickets for booking {booking.booking_reference}")
+            # Generate tickets and send notifications (asynchronous)
+            from apps.bookings.tasks import generate_and_send_tickets_task
+            generate_and_send_tickets_task.delay(str(booking.id))
 
-            # Send booking confirmation email with ticket PDFs
-            from apps.notifications.email_service import EmailService
-            email_sent = EmailService.send_booking_confirmation(booking, tickets)
-
-            if email_sent:
-                logger.info(f"Booking confirmation email sent for {booking.booking_reference}")
-            else:
-                logger.error(f"Failed to send booking confirmation email for {booking.booking_reference}")
+            logger.info(f"Ticket generation and email task queued for booking {booking.booking_reference}")
 
         else:
             logger.warning(f"Transaction {transaction.transaction_reference} has no linked booking or attendee")
@@ -177,6 +166,56 @@ def check_pending_transactions():
     except Exception as e:
         logger.error(f"Error checking pending transactions: {str(e)}")
         raise self.retry(exc=e, countdown=300)  # Retry after 5 minutes
+
+
+@shared_task(bind=True, max_retries=3)
+def send_wallet_deposit_email_task(self, attendee_id, amount, new_balance, transaction_reference=None, mpesa_receipt=None):
+    """
+    Send wallet deposit confirmation email asynchronously
+
+    Args:
+        attendee_id (str): UUID of the attendee
+        amount (Decimal): Deposit amount
+        new_balance (Decimal): New wallet balance
+        transaction_reference (str): Transaction reference (optional)
+        mpesa_receipt (str): M-Pesa receipt number (optional)
+    """
+    try:
+        from apps.users.models import Attendee
+        from apps.notifications.email_service import EmailService
+
+        attendee = Attendee.objects.get(id=attendee_id)
+
+        logger.info(f"Sending wallet deposit confirmation email to {attendee.email}")
+
+        email_sent = EmailService.send_wallet_deposit_confirmation(
+            attendee=attendee,
+            amount=amount,
+            new_balance=new_balance,
+            transaction_reference=transaction_reference,
+            mpesa_receipt=mpesa_receipt
+        )
+
+        if email_sent:
+            logger.info(f"Wallet deposit confirmation email sent to {attendee.email}")
+        else:
+            logger.error(f"Failed to send wallet deposit confirmation email to {attendee.email}")
+
+        return {
+            'success': email_sent,
+            'attendee_email': attendee.email
+        }
+
+    except Attendee.DoesNotExist:
+        logger.error(f"Attendee {attendee_id} not found for wallet deposit email")
+        return {
+            'success': False,
+            'error': 'Attendee not found'
+        }
+    except Exception as e:
+        logger.error(f"Error sending wallet deposit email: {str(e)}", exc_info=True)
+        # Retry the task
+        raise self.retry(exc=e, countdown=60)
 
 
 @shared_task

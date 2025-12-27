@@ -82,19 +82,47 @@ flake8
 pylint apps/
 ```
 
-### Celery
+### Celery (Required for Email Notifications)
 
-Start Celery worker:
+Celery handles asynchronous tasks including:
+- **Booking confirmation emails** with ticket PDFs (M-Pesa and wallet payments)
+- **Wallet deposit confirmation emails**
+- Event reminders
+- Payment status checks
+- Ticket generation
+
+**Development Setup:**
+
+1. Make sure Redis is running:
 ```bash
+# Check if Redis is running
+redis-cli ping
+# Should return: PONG
+
+# If not running, start Redis:
+sudo systemctl start redis
+# Or on macOS with Homebrew:
+brew services start redis
+```
+
+2. Start Celery worker in a separate terminal:
+```bash
+# Activate your virtual environment first
+source venv/bin/activate
+
+# Start the worker
 celery -A config worker -l info
 ```
 
-Start Celery Beat (scheduled tasks):
+3. (Optional) Start Celery Beat for scheduled tasks:
 ```bash
 celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 ```
 
-For production deployment, see [CELERY_SETUP.md](CELERY_SETUP.md) for detailed instructions on running Celery workers and beat scheduler as system services.
+**Development Note:** Without Celery worker running, emails will not be sent! The tasks will queue but won't execute until a worker processes them.
+
+**Production Setup:**
+For production deployment, see [CELERY_SETUP.md](CELERY_SETUP.md) for detailed instructions on running Celery workers and beat scheduler as system services with supervisord or systemd.
 
 ### Django Commands
 
