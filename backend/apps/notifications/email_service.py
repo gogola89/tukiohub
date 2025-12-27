@@ -206,3 +206,47 @@ class EmailService:
         except Exception as e:
             logger.error(f"Failed to send ticket transfer emails: {str(e)}")
             return False
+
+    @staticmethod
+    def send_password_reset_email(user_obj, password_reset, user_type='organizer'):
+        """
+        Send password reset email to user or attendee
+
+        Args:
+            user_obj: User or Attendee instance
+            password_reset: PasswordReset instance
+            user_type: 'organizer' or 'attendee'
+
+        Returns:
+            bool: True if email sent successfully
+        """
+        try:
+            # Build reset URL (frontend will handle the token)
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?token={password_reset.token}"
+
+            context = {
+                'user': user_obj,
+                'reset_url': reset_url,
+                'user_type': user_type,
+                'first_name': user_obj.first_name if hasattr(user_obj, 'first_name') else user_obj.email.split('@')[0],
+            }
+
+            # Render HTML and plain text email
+            html_message = render_to_string('emails/password_reset_email.html', context)
+            plain_message = render_to_string('emails/password_reset_email.txt', context)
+
+            email = EmailMessage(
+                subject='Password Reset Request - TukioHub',
+                body=html_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user_obj.email],
+            )
+            email.content_subtype = 'html'
+            email.send(fail_silently=False)
+
+            logger.info(f"Password reset email sent to {user_obj.email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send password reset email: {str(e)}")
+            return False

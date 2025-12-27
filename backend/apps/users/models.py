@@ -359,11 +359,25 @@ class WalletTransaction(models.Model):
 
 class PasswordReset(models.Model):
     """
-    Model to handle password reset tokens
+    Model to handle password reset tokens for both User and Attendee models
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_resets')
+    # Support both User (organizers/admins) and Attendee models
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='password_resets',
+        null=True,
+        blank=True
+    )
+    attendee = models.ForeignKey(
+        'Attendee',
+        on_delete=models.CASCADE,
+        related_name='password_resets',
+        null=True,
+        blank=True
+    )
     token = models.CharField(max_length=255, unique=True)
     expires_at = models.DateTimeField()
     used = models.BooleanField(default=False)
@@ -374,18 +388,41 @@ class PasswordReset(models.Model):
         indexes = [
             models.Index(fields=['token']),
             models.Index(fields=['user', 'used']),
+            models.Index(fields=['attendee', 'used']),
         ]
         verbose_name = _('password reset')
         verbose_name_plural = _('password resets')
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(user__isnull=False, attendee__isnull=True) |
+                    models.Q(user__isnull=True, attendee__isnull=False)
+                ),
+                name='password_reset_user_or_attendee'
+            )
+        ]
 
     def __str__(self):
-        return f"Password reset for {self.user.email}"
+        if self.user:
+            return f"Password reset for {self.user.email}"
+        elif self.attendee:
+            return f"Password reset for {self.attendee.email}"
+        return f"Password reset {self.id}"
 
     @property
     def is_valid(self):
         """Check if token is still valid"""
         from django.utils import timezone
         return not self.used and self.expires_at > timezone.now()
+
+    @property
+    def email(self):
+        """Get the email of the user or attendee"""
+        if self.user:
+            return self.user.email
+        elif self.attendee:
+            return self.attendee.email
+        return None
 
 
 class EmailVerification(models.Model):

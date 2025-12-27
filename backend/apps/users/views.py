@@ -97,7 +97,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 class PasswordResetRequestView(generics.GenericAPIView):
     """
     POST /api/auth/forgot-password/
-    Request password reset
+    Request password reset (supports both organizers and attendees)
     """
     serializer_class = PasswordResetRequestSerializer
     permission_classes = [AllowAny]
@@ -108,25 +108,36 @@ class PasswordResetRequestView(generics.GenericAPIView):
 
         email = serializer.validated_data['email']
 
+        # Generate reset token
+        token = secrets.token_urlsafe(32)
+        expires_at = timezone.now() + timedelta(hours=24)
+
+        # Try to find user in User model (organizers/admins)
         try:
             user = User.objects.get(email=email)
-
-            # Generate reset token
-            token = secrets.token_urlsafe(32)
-            expires_at = timezone.now() + timedelta(hours=24)
-
             password_reset = PasswordReset.objects.create(
                 user=user,
                 token=token,
                 expires_at=expires_at
             )
-
             # Send password reset email
-            EmailService.send_password_reset_email(user, password_reset)
+            EmailService.send_password_reset_email(user, password_reset, user_type='organizer')
 
         except User.DoesNotExist:
-            # Don't reveal if email exists
-            pass
+            # Try to find in Attendee model
+            try:
+                attendee = Attendee.objects.get(email=email)
+                password_reset = PasswordReset.objects.create(
+                    attendee=attendee,
+                    token=token,
+                    expires_at=expires_at
+                )
+                # Send password reset email
+                EmailService.send_password_reset_email(attendee, password_reset, user_type='attendee')
+
+            except Attendee.DoesNotExist:
+                # Don't reveal if email exists
+                pass
 
         return Response({
             'message': 'If your email exists in our system, you will receive password reset instructions.'

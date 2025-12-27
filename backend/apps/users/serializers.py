@@ -249,15 +249,23 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
     def save(self):
         reset = self.validated_data['reset']
-        user = reset.user
-        user.set_password(self.validated_data['password'])
-        user.save()
+
+        # Handle both User and Attendee models
+        if reset.user:
+            user_obj = reset.user
+        elif reset.attendee:
+            user_obj = reset.attendee
+        else:
+            raise serializers.ValidationError({"token": "Invalid reset token."})
+
+        user_obj.set_password(self.validated_data['password'])
+        user_obj.save()
 
         # Mark token as used
         reset.used = True
         reset.save()
 
-        return user
+        return user_obj
 
 
 class EmailVerificationSerializer(serializers.Serializer):
