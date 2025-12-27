@@ -151,7 +151,7 @@ class EventListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = [
-            'id', 'title', 'slug', 'category', 'venue_name', 'venue_address', 'venue_city',
+            'id', 'title', 'slug', 'category', 'venue_name', 'venue_address',
             'start_datetime', 'end_datetime', 'featured_image', 'featured_image_url',
             'is_free', 'min_price', 'max_price', 'status', 'organizer_name',
             'is_sold_out', 'is_upcoming', 'tickets_sold', 'revenue', 'created_at'
