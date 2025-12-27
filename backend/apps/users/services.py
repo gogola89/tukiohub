@@ -94,46 +94,56 @@ class EmailService:
             return False
 
     @staticmethod
-    def send_password_reset_email(user, password_reset):
+    def send_password_reset_email(user_obj, password_reset, user_type='organizer'):
         """
-        Send password reset link to user
+        Send password reset link to user or attendee
 
         Args:
-            user: User instance
+            user_obj: User or Attendee instance
             password_reset: PasswordReset token instance
+            user_type: 'organizer' or 'attendee' (default: 'organizer')
         """
         try:
             # Frontend URL for password reset
             frontend_url = settings.FRONTEND_URL if hasattr(settings, 'FRONTEND_URL') else 'http://localhost:3000'
             reset_link = f"{frontend_url}/reset-password?token={password_reset.token}"
 
+            # Get user info
+            user_info = EmailService._get_user_info(user_obj)
+
             # Render email templates
             subject = 'TukioHub - Password Reset Request'
             html_message = render_to_string('emails/password_reset_email.html', {
-                'user': user,
+                'user': user_obj,
                 'reset_link': reset_link,
+                'reset_url': reset_link,  # Alternative name for template compatibility
                 'expiry_hours': 24,
+                'user_type': user_type,
+                'first_name': user_info['name'],
             })
             plain_message = render_to_string('emails/password_reset_email.txt', {
-                'user': user,
+                'user': user_obj,
                 'reset_link': reset_link,
+                'reset_url': reset_link,
                 'expiry_hours': 24,
+                'user_type': user_type,
+                'first_name': user_info['name'],
             })
 
             send_mail(
                 subject=subject,
                 message=plain_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
+                recipient_list=[user_info['email']],
                 html_message=html_message,
                 fail_silently=False,
             )
 
-            logger.info(f"Password reset email sent to {user.email}")
+            logger.info(f"Password reset email sent to {user_info['email']} ({user_type})")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to send password reset email to {user.email}: {str(e)}")
+            logger.error(f"Failed to send password reset email: {str(e)}")
             return False
 
     @staticmethod
