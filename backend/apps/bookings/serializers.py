@@ -169,17 +169,25 @@ class TicketSerializer(serializers.ModelSerializer):
     """Serializer for tickets"""
 
     event = serializers.SerializerMethodField()
-    ticket_type_name = serializers.CharField(source='ticket_type.name', read_only=True)
+    ticket_type = serializers.SerializerMethodField()
 
     class Meta:
         model = Ticket
         fields = [
             'id', 'ticket_code', 'attendee_name', 'attendee_email',
-            'ticket_type', 'ticket_type_name', 'event', 'status',
+            'ticket_type', 'event', 'status',
             'checked_in_at', 'checked_in_by', 'qr_code_image',
             'created_at'
         ]
         read_only_fields = fields
+
+    def get_ticket_type(self, obj):
+        """Get ticket type details with price"""
+        return {
+            'id': str(obj.ticket_type.id),
+            'name': obj.ticket_type.name,
+            'price': float(obj.ticket_type.price)
+        }
 
     def get_event(self, obj):
         """Get event details"""

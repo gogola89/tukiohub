@@ -130,23 +130,30 @@ class OrganizerDashboardSerializer(serializers.Serializer):
     organizer_id = serializers.UUIDField()
     organizer_name = serializers.CharField()
     period_days = serializers.IntegerField()
-    
+
     # Event metrics
     total_events = serializers.IntegerField()
     active_events = serializers.IntegerField()
+    upcoming_events_count = serializers.IntegerField()
     draft_events = serializers.IntegerField()
     completed_events = serializers.IntegerField()
-    
-    # All-time metrics
+
+    # Frontend-compatible fields
+    total_bookings = serializers.IntegerField()
+    tickets_sold = serializers.IntegerField()
+    total_revenue = serializers.FloatField()
+    total_attendees = serializers.IntegerField()
+
+    # Legacy fields (for backward compatibility)
     lifetime_bookings = serializers.IntegerField()
     lifetime_tickets = serializers.IntegerField()
     lifetime_revenue = serializers.FloatField()
-    
+
     # Period metrics
     period_bookings = serializers.IntegerField()
     period_tickets = serializers.IntegerField()
     period_revenue = serializers.FloatField()
-    
+
     # Averages
     avg_revenue_per_event = serializers.FloatField()
     avg_tickets_per_event = serializers.FloatField()

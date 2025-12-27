@@ -10,6 +10,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django.db.models import Count, Sum, Q
 
 from .models import Event, TicketType, PromoCode, EventAddOn, EventImage
 from .serializers import (
@@ -58,7 +59,9 @@ class EventViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return Event.objects.none()
 
-        return Event.objects.filter(
+        from apps.bookings.models import Booking, Ticket
+
+        queryset = Event.objects.filter(
             organizer=self.request.user
         ).select_related('organizer').prefetch_related(
             'ticket_types',
@@ -66,6 +69,22 @@ class EventViewSet(viewsets.ModelViewSet):
             'addons',
             'event_images'
         )
+
+        # For list view, annotate with analytics data
+        if self.action == 'list':
+            queryset = queryset.annotate(
+                tickets_sold=Count(
+                    'bookings__tickets',
+                    filter=Q(bookings__status=Booking.STATUS_CONFIRMED),
+                    distinct=True
+                ),
+                revenue=Sum(
+                    'bookings__final_amount',
+                    filter=Q(bookings__status=Booking.STATUS_CONFIRMED)
+                )
+            )
+
+        return queryset
 
     def get_serializer_class(self):
         """Return appropriate serializer class based on action"""

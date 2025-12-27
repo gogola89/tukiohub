@@ -270,30 +270,43 @@ class AnalyticsService:
             created_at__gte=start_date
         ).count()
 
+        # Count upcoming events
+        upcoming_events_count = events.filter(
+            status=Event.PUBLISHED,
+            start_datetime__gte=timezone.now()
+        ).count()
+
         return {
             'organizer_id': str(organizer.id),
             'organizer_name': organizer.company_name or organizer.email,
             'period_days': period_days,
-            
+
             # Event metrics
             'total_events': events.count(),
             'active_events': active_events.count(),
+            'upcoming_events_count': upcoming_events_count,
             'draft_events': events.filter(status=Event.DRAFT).count(),
             'completed_events': events.filter(
                 status=Event.PUBLISHED,
                 end_datetime__lt=timezone.now()
             ).count(),
-            
-            # All-time metrics
+
+            # All-time metrics (with frontend-compatible field names)
+            'total_bookings': confirmed_bookings.count(),
+            'tickets_sold': total_tickets,
+            'total_revenue': float(total_revenue),
+            'total_attendees': confirmed_bookings.count(),  # Number of unique bookings = attendees
+
+            # Legacy field names for backward compatibility
             'lifetime_bookings': confirmed_bookings.count(),
             'lifetime_tickets': total_tickets,
             'lifetime_revenue': float(total_revenue),
-            
+
             # Period metrics
             'period_bookings': period_bookings.count(),
             'period_tickets': period_tickets,
             'period_revenue': float(period_revenue),
-            
+
             # Averages
             'avg_revenue_per_event': float(total_revenue / events.count()) if events.count() > 0 else 0,
             'avg_tickets_per_event': round(total_tickets / events.count(), 2) if events.count() > 0 else 0,

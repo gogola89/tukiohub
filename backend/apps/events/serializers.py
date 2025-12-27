@@ -145,16 +145,18 @@ class EventListSerializer(serializers.ModelSerializer):
     is_sold_out = serializers.ReadOnlyField()
     is_upcoming = serializers.ReadOnlyField()
     featured_image_url = serializers.SerializerMethodField()
+    tickets_sold = serializers.IntegerField(read_only=True, default=0)
+    revenue = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True, default=0)
 
     class Meta:
         model = Event
         fields = [
-            'id', 'title', 'slug', 'category', 'venue_name', 'venue_address',
+            'id', 'title', 'slug', 'category', 'venue_name', 'venue_address', 'venue_city',
             'start_datetime', 'end_datetime', 'featured_image', 'featured_image_url',
             'is_free', 'min_price', 'max_price', 'status', 'organizer_name',
-            'is_sold_out', 'is_upcoming', 'created_at'
+            'is_sold_out', 'is_upcoming', 'tickets_sold', 'revenue', 'created_at'
         ]
-        read_only_fields = ['id', 'slug', 'created_at']
+        read_only_fields = ['id', 'slug', 'created_at', 'tickets_sold', 'revenue']
 
     def get_featured_image_url(self, obj):
         """Get full featured image URL"""
