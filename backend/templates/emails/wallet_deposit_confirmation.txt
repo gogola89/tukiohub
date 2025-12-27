@@ -1,0 +1,29 @@
+WALLET DEPOSIT SUCCESSFUL
+========================
+
+Hello {{ attendee.first_name }},
+
+Great news! Your wallet has been successfully topped up.
+
+AMOUNT DEPOSITED: KES {{ amount|floatformat:2 }}
+
+TRANSACTION DETAILS:
+-------------------
+Amount Deposited: KES {{ amount|floatformat:2 }}
+New Wallet Balance: KES {{ new_balance|floatformat:2 }}
+{% if transaction_reference %}Transaction Reference: {{ transaction_reference }}{% endif %}
+{% if mpesa_receipt %}M-Pesa Receipt: {{ mpesa_receipt }}{% endif %}
+Date & Time: {{ date_time }}
+
+Your wallet is now ready to use for faster checkout when booking event tickets!
+
+View your wallet: http://localhost:3000/attendee/profile
+
+Thank you for using TukioHub!
+
+Best regards,
+The TukioHub Team
+
+---
+This is an automated message, please do not reply to this email.
+© 2025 TukioHub. All rights reserved.

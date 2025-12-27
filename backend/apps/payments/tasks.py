@@ -50,8 +50,20 @@ def process_successful_payment(self, transaction_id):
 
             logger.info(f"Wallet top-up successful. New balance: {attendee.wallet_balance}")
 
-            # Optional: Send confirmation email/SMS for wallet deposit
-            # You can implement this later if needed
+            # Send wallet deposit confirmation email
+            from apps.notifications.email_service import EmailService
+            email_sent = EmailService.send_wallet_deposit_confirmation(
+                attendee=attendee,
+                amount=amount,
+                new_balance=attendee.wallet_balance,
+                transaction_reference=transaction.transaction_reference,
+                mpesa_receipt=transaction.mpesa_receipt_number
+            )
+
+            if email_sent:
+                logger.info(f"Wallet deposit confirmation email sent to {attendee.email}")
+            else:
+                logger.error(f"Failed to send wallet deposit confirmation email to {attendee.email}")
 
         # Check if transaction has linked booking
         elif transaction.booking:
@@ -68,11 +80,19 @@ def process_successful_payment(self, transaction_id):
 
             logger.info(f"Booking {booking.booking_reference} confirmed")
 
-            # Generate tickets and send notifications
-            from apps.bookings.tasks import generate_and_send_tickets_task
-            generate_and_send_tickets_task.delay(str(booking.id))
+            # Generate tickets
+            from apps.bookings.ticket_service import TicketService
+            tickets = TicketService.generate_tickets_for_booking(booking.id)
+            logger.info(f"Generated {len(tickets)} tickets for booking {booking.booking_reference}")
 
-            logger.info(f"Ticket generation task queued for booking {booking.booking_reference}")
+            # Send booking confirmation email with ticket PDFs
+            from apps.notifications.email_service import EmailService
+            email_sent = EmailService.send_booking_confirmation(booking, tickets)
+
+            if email_sent:
+                logger.info(f"Booking confirmation email sent for {booking.booking_reference}")
+            else:
+                logger.error(f"Failed to send booking confirmation email for {booking.booking_reference}")
 
         else:
             logger.warning(f"Transaction {transaction.transaction_reference} has no linked booking or attendee")

@@ -250,3 +250,49 @@ class EmailService:
         except Exception as e:
             logger.error(f"Failed to send password reset email: {str(e)}")
             return False
+
+    @staticmethod
+    def send_wallet_deposit_confirmation(attendee, amount, new_balance, transaction_reference=None, mpesa_receipt=None):
+        """
+        Send wallet deposit confirmation email
+
+        Args:
+            attendee: Attendee instance
+            amount: Deposit amount
+            new_balance: New wallet balance after deposit
+            transaction_reference: Transaction reference (optional)
+            mpesa_receipt: M-Pesa receipt number (optional)
+
+        Returns:
+            bool: True if email sent successfully
+        """
+        try:
+            from django.utils import timezone
+
+            context = {
+                'attendee': attendee,
+                'amount': amount,
+                'new_balance': new_balance,
+                'transaction_reference': transaction_reference,
+                'mpesa_receipt': mpesa_receipt,
+                'date_time': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+            }
+
+            html_message = render_to_string('emails/wallet_deposit_confirmation.html', context)
+            plain_message = render_to_string('emails/wallet_deposit_confirmation.txt', context)
+
+            email = EmailMessage(
+                subject='Wallet Deposit Successful - TukioHub',
+                body=html_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[attendee.email],
+            )
+            email.content_subtype = 'html'
+            email.send(fail_silently=False)
+
+            logger.info(f"Wallet deposit confirmation email sent to {attendee.email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send wallet deposit confirmation email: {str(e)}")
+            return False

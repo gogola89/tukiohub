@@ -189,7 +189,15 @@ class ConfirmWalletPaymentAPIView(generics.GenericAPIView):
             # Generate tickets
             tickets = TicketService.generate_tickets_for_booking(booking.id)
 
-            # Send confirmation email (this is done inside ticket service)
+            # Send booking confirmation email with ticket PDFs
+            from apps.notifications.email_service import EmailService
+            email_sent = EmailService.send_booking_confirmation(booking, tickets)
+
+            if email_sent:
+                logger.info(f"Booking confirmation email sent for {booking.booking_reference}")
+            else:
+                logger.error(f"Failed to send booking confirmation email for {booking.booking_reference}")
+
             logger.info(f"Wallet payment confirmed for booking {booking.booking_reference}")
 
             return Response({
