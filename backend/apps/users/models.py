@@ -232,21 +232,63 @@ class Attendee(AbstractBaseUser):
         """Get full name of the attendee"""
         return f"{self.first_name} {self.last_name}"
 
-    def add_to_wallet(self, amount):
-        """Add money to wallet"""
+    def add_to_wallet(self, amount, description='', transaction_type='DEPOSIT'):
+        """
+        Add money to wallet and create transaction record
+
+        Args:
+            amount: Amount to add
+            description: Transaction description
+            transaction_type: Type of transaction (default: DEPOSIT)
+        """
         if amount <= 0:
             raise ValueError("Amount must be positive")
+
+        # Update wallet balance
         self.wallet_balance += amount
         self.save()
 
-    def withdraw_from_wallet(self, amount):
-        """Withdraw money from wallet"""
+        # Create wallet transaction record
+        WalletTransaction.objects.create(
+            attendee=self,
+            transaction_type=transaction_type,
+            amount=amount,
+            description=description,
+            balance_after=self.wallet_balance
+        )
+
+        return self.wallet_balance
+
+    def withdraw_from_wallet(self, amount, description='', transaction_type='WITHDRAWAL', booking=None):
+        """
+        Withdraw money from wallet and create transaction record
+
+        Args:
+            amount: Amount to withdraw
+            description: Transaction description
+            transaction_type: Type of transaction (default: WITHDRAWAL)
+            booking: Related booking (optional)
+        """
         if amount <= 0:
             raise ValueError("Amount must be positive")
         if amount > self.wallet_balance:
             raise ValueError("Insufficient funds")
+
+        # Update wallet balance
         self.wallet_balance -= amount
         self.save()
+
+        # Create wallet transaction record
+        WalletTransaction.objects.create(
+            attendee=self,
+            transaction_type=transaction_type,
+            amount=amount,
+            description=description,
+            balance_after=self.wallet_balance,
+            booking=booking
+        )
+
+        return self.wallet_balance
 
     def can_afford(self, amount):
         """Check if attendee can afford a purchase"""
@@ -286,6 +328,13 @@ class WalletTransaction(models.Model):
         validators=[MinValueValidator(0)]
     )
     description = models.TextField(blank=True)
+
+    # Balance after this transaction
+    balance_after = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
 
     # Related booking (if applicable)
     booking = models.ForeignKey(

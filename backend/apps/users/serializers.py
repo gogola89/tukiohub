@@ -312,9 +312,9 @@ class WalletTransactionSerializer(serializers.ModelSerializer):
         model = WalletTransaction
         fields = [
             'id', 'attendee', 'transaction_type', 'amount', 'description',
-            'booking', 'created_at'
+            'balance_after', 'booking', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'balance_after']
 
 
 class AddToWalletSerializer(serializers.Serializer):

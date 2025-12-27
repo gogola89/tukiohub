@@ -435,7 +435,7 @@ class WalletView(generics.GenericAPIView):
 
         return Response({
             'wallet_balance': attendee.wallet_balance,
-            'recent_transactions': WalletTransactionSerializer(transactions, many=True).data
+            'transactions': WalletTransactionSerializer(transactions, many=True).data
         })
 
     def post(self, request):
