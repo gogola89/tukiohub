@@ -47,11 +47,11 @@
         <h1>Welcome to TukioHub!</h1>
     </div>
     <div class="content">
-        <p>Hello{% if user.company_name %} {{ user.company_name }}{% endif %},</p>
+        <p>Hello{% if user.company_name %} {{ user.company_name }}{% elif user.first_name %} {{ user.first_name }}{% endif %},</p>
 
         <p>Thank you for registering with TukioHub, Kenya's premier event management platform!</p>
 
-        <p>To complete your registration and start creating amazing events, please verify your email address by clicking the button below:</p>
+        <p>To complete your registration and start {% if user.company_name %}creating amazing events{% else %}discovering and attending exciting events{% endif %}, please verify your email address by clicking the button below:</p>
 
         <div style="text-align: center;">
             <a href="{{ verification_link }}" class="button">Verify Email Address</a>

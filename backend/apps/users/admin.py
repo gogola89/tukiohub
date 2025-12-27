@@ -103,8 +103,27 @@ class PasswordResetAdmin(admin.ModelAdmin):
 class EmailVerificationAdmin(admin.ModelAdmin):
     """Admin configuration for EmailVerification model"""
 
-    list_display = ['user', 'used', 'expires_at', 'created_at']
+    list_display = ['get_user_email', 'get_user_type', 'used', 'expires_at', 'created_at']
     list_filter = ['used', 'created_at']
-    search_fields = ['user__email', 'token']
+    search_fields = ['user__email', 'attendee__email', 'token']
     readonly_fields = ['created_at']
     ordering = ['-created_at']
+
+    def get_user_email(self, obj):
+        """Display email of either user or attendee"""
+        if obj.user:
+            return obj.user.email
+        elif obj.attendee:
+            return obj.attendee.email
+        return 'N/A'
+    get_user_email.short_description = 'Email'
+    get_user_email.admin_order_field = 'user__email'
+
+    def get_user_type(self, obj):
+        """Display whether this is for a user (organizer) or attendee"""
+        if obj.user:
+            return 'Organizer'
+        elif obj.attendee:
+            return 'Attendee'
+        return 'Unknown'
+    get_user_type.short_description = 'User Type'

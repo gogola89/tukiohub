@@ -113,6 +113,11 @@ class UserLoginSerializer(serializers.Serializer):
             if not user.is_active:
                 raise serializers.ValidationError('User account is disabled.')
 
+            if not user.email_verified:
+                raise serializers.ValidationError(
+                    'Please verify your email address before logging in. Check your inbox for the verification email.'
+                )
+
         else:
             raise serializers.ValidationError('Must include "email" and "password".')
 
@@ -139,6 +144,11 @@ class AttendeeLoginSerializer(serializers.Serializer):
 
                 if not attendee.is_active:
                     raise serializers.ValidationError('Attendee account is disabled.')
+
+                if not attendee.email_verified:
+                    raise serializers.ValidationError(
+                        'Please verify your email address before logging in. Check your inbox for the verification email.'
+                    )
             except Attendee.DoesNotExist:
                 raise serializers.ValidationError('Unable to log in with provided credentials.')
         else:
