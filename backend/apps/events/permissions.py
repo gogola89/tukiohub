@@ -26,6 +26,8 @@ class IsEventOrganizer(permissions.BasePermission):
 class IsVerifiedOrganizer(permissions.BasePermission):
     """
     Permission to check if user is a verified organizer
+    For viewing (list, retrieve): Allow all organizers regardless of verification status
+    For modifying (create, update, delete, publish): Require APPROVED status
     """
 
     def has_permission(self, request, view):
@@ -35,10 +37,16 @@ class IsVerifiedOrganizer(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        return (
-            request.user.role == User.ORGANIZER and
-            request.user.verification_status == User.APPROVED
-        )
+        # Must be an organizer
+        if request.user.role != User.ORGANIZER:
+            return False
+
+        # For read-only actions (list, retrieve), allow all organizers
+        if view.action in ['list', 'retrieve']:
+            return True
+
+        # For write actions, require verification
+        return request.user.verification_status == User.APPROVED
 
 
 class CanManageEvent(permissions.BasePermission):
