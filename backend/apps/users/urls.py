@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     UserRegistrationView,
     UserLoginView,
+    UnifiedLoginView,
     UserLogoutView,
     UserProfileView,
     PasswordResetRequestView,
@@ -14,11 +15,18 @@ from .views import (
     EmailVerificationView,
     ProfileImageUploadView,
     DocumentUploadView,
-    OrganizerDashboardView
+    OrganizerDashboardView,
+    AttendeeRegistrationView,
+    AttendeeLoginView,
+    AttendeeLogoutView,
+    AttendeeProfileView,
+    WalletView
 )
 from .admin_views import (
     AdminOrganizerListView,
     AdminOrganizerDetailView,
+    AdminAttendeeListView,
+    AdminAttendeeDetailView,
     OrganizerApprovalView,
     AdminDashboardView,
     AdminAnalyticsView
@@ -30,6 +38,7 @@ urlpatterns = [
     # Authentication
     path('auth/register/', UserRegistrationView.as_view(), name='register'),
     path('auth/login/', UserLoginView.as_view(), name='login'),
+    path('auth/unified-login/', UnifiedLoginView.as_view(), name='unified-login'),
     path('auth/logout/', UserLogoutView.as_view(), name='logout'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/me/', UserProfileView.as_view(), name='user-profile'),
@@ -48,10 +57,19 @@ urlpatterns = [
     # Organizer Dashboard
     path('organizer/dashboard/', OrganizerDashboardView.as_view(), name='organizer-dashboard'),
 
+    # Attendee Routes
+    path('attendees/register/', AttendeeRegistrationView.as_view(), name='attendee-register'),
+    path('attendees/login/', AttendeeLoginView.as_view(), name='attendee-login'),
+    path('attendees/logout/', AttendeeLogoutView.as_view(), name='attendee-logout'),
+    path('attendees/profile/', AttendeeProfileView.as_view(), name='attendee-profile'),
+    path('attendees/wallet/', WalletView.as_view(), name='attendee-wallet'),
+
     # Admin Routes
     path('admin/organizers/', AdminOrganizerListView.as_view(), name='admin-organizers-list'),
     path('admin/organizers/<uuid:pk>/', AdminOrganizerDetailView.as_view(), name='admin-organizer-detail'),
     path('admin/organizers/<uuid:pk>/approve-reject/', OrganizerApprovalView.as_view(), name='admin-organizer-approval'),
+    path('admin/attendees/', AdminAttendeeListView.as_view(), name='admin-attendees-list'),
+    path('admin/attendees/<uuid:pk>/', AdminAttendeeDetailView.as_view(), name='admin-attendee-detail'),
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
     path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
 ]

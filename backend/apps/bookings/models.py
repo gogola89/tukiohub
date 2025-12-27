@@ -9,12 +9,13 @@ from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from apps.events.models import Event, TicketType, PromoCode, EventAddOn
+from apps.users.models import Attendee
 
 
 class Booking(models.Model):
     """
     Booking model for managing event ticket bookings
-    Supports guest checkout (no user account required)
+    Supports both guest checkout and registered users
     """
 
     # Payment status choices
@@ -46,10 +47,12 @@ class Booking(models.Model):
     # Payment method choices
     MPESA = 'MPESA'
     CARD = 'CARD'
+    WALLET = 'WALLET'
 
     PAYMENT_METHOD_CHOICES = [
         (MPESA, 'M-Pesa'),
         (CARD, 'Card Payment'),
+        (WALLET, 'Wallet'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -62,7 +65,16 @@ class Booking(models.Model):
         related_name='bookings'
     )
 
-    # Attendee information (guest checkout - no user account required)
+    # Reference to registered user (optional for guest checkout)
+    attendee = models.ForeignKey(
+        Attendee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='bookings'
+    )
+
+    # Attendee information (for guest checkout compatibility)
     attendee_name = models.CharField(max_length=255)
     attendee_email = models.EmailField()
     attendee_phone = models.CharField(max_length=15)
@@ -130,6 +142,7 @@ class Booking(models.Model):
             models.Index(fields=['attendee_email', 'created_at']),
             models.Index(fields=['status', 'created_at']),
             models.Index(fields=['event', 'status']),
+            models.Index(fields=['attendee', 'created_at']),
         ]
 
     def __str__(self):

@@ -242,6 +242,18 @@ class TicketTypeViewSet(viewsets.ModelViewSet):
             event__organizer=self.request.user
         ).select_related('event')
 
+    def get_serializer_context(self):
+        """Pass event ID in context for nested serializer"""
+        context = super().get_serializer_context()
+        event_id = self.kwargs.get('event_pk')
+        if event_id:
+            try:
+                event = Event.objects.get(id=event_id)
+                context['event'] = event
+            except Event.DoesNotExist:
+                pass
+        return context
+
     def perform_create(self, serializer):
         """Create ticket type for the specified event"""
         event_id = self.kwargs.get('event_pk')
@@ -315,6 +327,18 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
         promo_code = serializer.save()
         logger.info(f"Promo code updated: {promo_code.code}")
 
+    def get_serializer_context(self):
+        """Pass event ID in context for nested serializer"""
+        context = super().get_serializer_context()
+        event_id = self.kwargs.get('event_pk')
+        if event_id:
+            try:
+                event = Event.objects.get(id=event_id)
+                context['event'] = event
+            except Event.DoesNotExist:
+                pass
+        return context
+
     def perform_destroy(self, instance):
         """Delete promo code"""
         logger.info(f"Promo code deleted: {instance.code}")
@@ -363,6 +387,18 @@ class EventAddOnViewSet(viewsets.ModelViewSet):
         """Update add-on"""
         addon = serializer.save()
         logger.info(f"Add-on updated: {addon.name}")
+
+    def get_serializer_context(self):
+        """Pass event ID in context for nested serializer"""
+        context = super().get_serializer_context()
+        event_id = self.kwargs.get('event_pk')
+        if event_id:
+            try:
+                event = Event.objects.get(id=event_id)
+                context['event'] = event
+            except Event.DoesNotExist:
+                pass
+        return context
 
     def perform_destroy(self, instance):
         """Delete add-on"""

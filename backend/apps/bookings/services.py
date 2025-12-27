@@ -22,7 +22,7 @@ class BookingService:
 
     @staticmethod
     @transaction.atomic
-    def create_booking(event_id, items_data, attendee_info, promo_code=None, addons_data=None):
+    def create_booking(event_id, items_data, attendee_info, attendee=None, payment_method=None, promo_code=None, addons_data=None):
         """
         Create a new booking with inventory locking
 
@@ -30,6 +30,8 @@ class BookingService:
             event_id (UUID): Event ID
             items_data (list): List of {'ticket_type_id': UUID, 'quantity': int}
             attendee_info (dict): Attendee details
+            attendee (Attendee): Registered attendee (optional, for guest checkout)
+            payment_method (str): Payment method (MPESA, CARD, WALLET)
             promo_code (str): Promo code (optional)
             addons_data (list): List of {'addon_id': UUID, 'quantity': int} (optional)
 
@@ -72,15 +74,22 @@ class BookingService:
             discount_amount = BookingService._calculate_discount(promo_instance, total_amount)
             final_amount = total_amount - discount_amount
 
+        # If using wallet payment, check if attendee has sufficient balance
+        if payment_method == 'WALLET' and attendee:
+            if not attendee.can_afford(final_amount):
+                raise ValidationError(f"Insufficient funds in wallet. Required: {final_amount}, Available: {attendee.wallet_balance}")
+
         # Create booking
         booking = Booking.objects.create(
             event=event,
+            attendee=attendee,  # Add attendee reference
             attendee_name=attendee_info['attendee_name'],
             attendee_email=attendee_info['attendee_email'],
             attendee_phone=attendee_info['attendee_phone'],
             total_amount=total_amount,
             discount_amount=discount_amount,
             final_amount=final_amount,
+            payment_method=payment_method,  # Add payment method
             promo_code=promo_instance,
             status=Booking.STATUS_PENDING,
             payment_status=Booking.PENDING,
@@ -250,6 +259,20 @@ class BookingService:
         if booking.status != Booking.STATUS_PENDING:
             raise ValidationError(f"Cannot confirm booking with status: {booking.status}")
 
+        # Handle wallet payment - deduct from attendee's wallet
+        if payment_method == 'WALLET' and booking.attendee:
+            booking.attendee.withdraw_from_wallet(booking.final_amount)
+
+            # Create wallet transaction record
+            from apps.users.models import WalletTransaction
+            WalletTransaction.objects.create(
+                attendee=booking.attendee,
+                transaction_type=WalletTransaction.BOOKING,
+                amount=booking.final_amount,
+                description=f"Payment for booking {booking.booking_reference}",
+                booking=booking
+            )
+
         # Update booking status
         booking.confirm()
         if payment_method:
@@ -316,6 +339,21 @@ class BookingService:
         # Can only cancel pending or confirmed bookings
         if booking.status not in [Booking.STATUS_PENDING, Booking.STATUS_CONFIRMED]:
             raise ValidationError(f"Cannot cancel booking with status: {booking.status}")
+
+        # Handle refund for wallet payments
+        if booking.payment_method == 'WALLET' and booking.attendee and booking.status == Booking.STATUS_CONFIRMED:
+            # Refund the amount to attendee's wallet
+            booking.attendee.add_to_wallet(booking.final_amount)
+
+            # Create wallet transaction record for refund
+            from apps.users.models import WalletTransaction
+            WalletTransaction.objects.create(
+                attendee=booking.attendee,
+                transaction_type=WalletTransaction.REFUND,
+                amount=booking.final_amount,
+                description=f"Refund for cancelled booking {booking.booking_reference}",
+                booking=booking
+            )
 
         # Release inventory if pending
         if booking.status == Booking.STATUS_PENDING:

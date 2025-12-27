@@ -46,11 +46,22 @@ class Transaction(models.Model):
         related_name='transactions'
     )
 
-    # Event reference for tracking
+    # Event reference for tracking (optional - null for wallet top-ups)
     event = models.ForeignKey(
         Event,
         on_delete=models.CASCADE,
-        related_name='transactions'
+        related_name='transactions',
+        null=True,
+        blank=True
+    )
+
+    # Attendee reference for wallet top-ups
+    attendee = models.ForeignKey(
+        'users.Attendee',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payment_transactions'
     )
 
     # Payment details

@@ -7,9 +7,13 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count
+from .models import Attendee
 from .serializers import (
     AdminOrganizerListSerializer,
     AdminOrganizerDetailSerializer,
+    AdminAttendeeListSerializer,
+    AdminAttendeeDetailSerializer,
+    AdminUpdateAttendeeSerializer,
     OrganizerApprovalSerializer,
     AdminUpdateOrganizerSerializer,
     AdminDashboardSerializer,
@@ -256,3 +260,56 @@ class AdminAnalyticsView(generics.GenericAPIView):
         }
 
         return Response(analytics_data, status=status.HTTP_200_OK)
+
+
+class AdminAttendeeListView(generics.ListAPIView):
+    """
+    GET /api/admin/attendees/
+    List all attendees (admin only)
+    """
+    serializer_class = AdminAttendeeListSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_queryset(self):
+        """
+        Get attendees list with optional filtering
+        """
+        queryset = Attendee.objects.all().order_by('-created_at')
+
+        # Filter by subscription status
+        is_subscribed = self.request.query_params.get('is_subscribed', None)
+        if is_subscribed is not None:
+            subscribed = is_subscribed.lower() == 'true'
+            queryset = queryset.filter(is_subscribed=subscribed)
+
+        # Filter by email verification
+        email_verified = self.request.query_params.get('email_verified', None)
+        if email_verified is not None:
+            verified = email_verified.lower() == 'true'
+            queryset = queryset.filter(email_verified=verified)
+
+        # Search by email or name
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(email__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search)
+            )
+
+        return queryset
+
+
+class AdminAttendeeDetailView(generics.RetrieveUpdateAPIView):
+    """
+    GET/PATCH /api/admin/attendees/<id>/
+    Get or update attendee details (admin only)
+    """
+    queryset = Attendee.objects.all()
+    serializer_class = AdminAttendeeDetailSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return AdminUpdateAttendeeSerializer
+        return AdminAttendeeDetailSerializer

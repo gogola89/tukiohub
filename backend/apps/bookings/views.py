@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
+from django.utils import timezone
 import logging
 
 from .models import Booking, Ticket
@@ -50,6 +51,17 @@ class CreateBookingAPIView(generics.GenericAPIView):
             )
 
         try:
+            # Get attendee if provided
+            attendee = serializer.validated_data.get('attendee_id')
+            payment_method = serializer.validated_data.get('payment_method', 'MPESA')
+
+            # Check if using wallet and attendee exists
+            if payment_method == 'WALLET' and not attendee:
+                return Response(
+                    {'error': 'Attendee ID is required when using wallet payment'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             # Create booking using service
             booking = BookingService.create_booking(
                 event_id=serializer.validated_data['event_id'],
@@ -60,6 +72,8 @@ class CreateBookingAPIView(generics.GenericAPIView):
                     'attendee_phone': serializer.validated_data['attendee_phone'],
                     'notes': serializer.validated_data.get('notes', ''),
                 },
+                attendee=attendee,  # Pass attendee object
+                payment_method=payment_method,  # Pass payment method
                 promo_code=serializer.validated_data.get('promo_code'),
                 addons_data=serializer.validated_data.get('addons', [])
             )
@@ -107,6 +121,94 @@ class GetBookingAPIView(generics.RetrieveAPIView):
             'addon_items__addon',
             'tickets__ticket_type'
         )
+
+
+class ConfirmWalletPaymentAPIView(generics.GenericAPIView):
+    """
+    Confirm booking with wallet payment
+
+    POST /api/bookings/<booking_reference>/confirm-wallet-payment/
+
+    This endpoint confirms a booking that was created with payment_method='WALLET'.
+    It will:
+    1. Deduct the amount from the attendee's wallet
+    2. Confirm the booking
+    3. Generate tickets
+    4. Send confirmation email
+
+    Requires: Authenticated attendee with sufficient wallet balance
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, booking_reference):
+        """Confirm wallet payment and complete booking"""
+        try:
+            # Get booking
+            booking = Booking.objects.select_related('event', 'attendee').get(
+                booking_reference=booking_reference
+            )
+        except Booking.DoesNotExist:
+            return Response(
+                {'error': 'Booking not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Verify the booking belongs to the authenticated user
+        if booking.attendee != request.user:
+            return Response(
+                {'error': 'You are not authorized to confirm this booking'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Check booking status
+        if booking.status != Booking.STATUS_PENDING:
+            return Response(
+                {'error': f'Booking is not pending. Current status: {booking.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check payment method
+        if booking.payment_method != 'WALLET':
+            return Response(
+                {'error': 'This endpoint is only for wallet payments'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if booking has expired
+        if booking.expires_at and booking.expires_at < timezone.now():
+            return Response(
+                {'error': 'Booking has expired'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Confirm booking (this will deduct from wallet)
+            booking = BookingService.confirm_booking(booking.id, payment_method='WALLET')
+
+            # Generate tickets
+            tickets = TicketService.generate_tickets_for_booking(booking.id)
+
+            # Send confirmation email (this is done inside ticket service)
+            logger.info(f"Wallet payment confirmed for booking {booking.booking_reference}")
+
+            return Response({
+                'message': 'Payment confirmed successfully',
+                'booking': BookingDetailSerializer(booking).data,
+                'tickets_generated': len(tickets)
+            }, status=status.HTTP_200_OK)
+
+        except (DjangoValidationError, ValidationError) as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(f"Error confirming wallet payment: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'An error occurred while processing payment'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class CancelBookingAPIView(generics.GenericAPIView):

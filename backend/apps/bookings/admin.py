@@ -62,6 +62,7 @@ class BookingAdmin(admin.ModelAdmin):
     list_display = [
         'booking_reference',
         'event_link',
+        'attendee_link',
         'attendee_name',
         'attendee_email',
         'status_badge',
@@ -90,6 +91,7 @@ class BookingAdmin(admin.ModelAdmin):
     readonly_fields = [
         'booking_reference',
         'event',
+        'attendee',
         'attendee_name',
         'attendee_email',
         'attendee_phone',
@@ -112,6 +114,7 @@ class BookingAdmin(admin.ModelAdmin):
             'fields': [
                 'booking_reference',
                 'event',
+                'attendee',
                 'status',
                 'expires_at',
                 'created_at',
@@ -152,6 +155,14 @@ class BookingAdmin(admin.ModelAdmin):
         url = reverse('admin:events_event_change', args=[obj.event.id])
         return format_html('<a href="{}">{}</a>', url, obj.event.title)
     event_link.short_description = "Event"
+
+    def attendee_link(self, obj):
+        """Link to attendee admin page"""
+        if obj.attendee:
+            url = reverse('admin:users_attendee_change', args=[obj.attendee.id])
+            return format_html('<a href="{}">{}</a>', url, obj.attendee.full_name)
+        return "Guest Checkout"
+    attendee_link.short_description = "Attendee"
 
     def status_badge(self, obj):
         """Display status with color badge"""

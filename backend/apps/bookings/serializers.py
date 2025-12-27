@@ -47,6 +47,8 @@ class CreateBookingSerializer(serializers.Serializer):
     """
 
     event_id = serializers.UUIDField(required=True)
+    # Optional attendee ID for registered users (null for guest checkout)
+    attendee_id = serializers.UUIDField(required=False, allow_null=True)
     attendee_name = serializers.CharField(required=True, max_length=255)
     attendee_email = serializers.EmailField(required=True)
     attendee_phone = serializers.CharField(required=True, max_length=15)
@@ -56,6 +58,11 @@ class CreateBookingSerializer(serializers.Serializer):
 
     promo_code = serializers.CharField(required=False, allow_blank=True, max_length=50)
     notes = serializers.CharField(required=False, allow_blank=True)
+    payment_method = serializers.ChoiceField(
+        choices=['MPESA', 'CARD', 'WALLET'],
+        required=False,
+        default='MPESA'
+    )
 
     def validate_event_id(self, value):
         """Validate event exists and is bookable"""
@@ -117,6 +124,17 @@ class CreateBookingSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid promo code.")
 
         return value.upper()
+
+    def validate_attendee_id(self, value):
+        """Validate that attendee exists if provided"""
+        if value:
+            try:
+                from apps.users.models import Attendee
+                attendee = Attendee.objects.get(id=value)
+                return attendee
+            except Attendee.DoesNotExist:
+                raise serializers.ValidationError("Attendee not found.")
+        return None
 
 
 class BookingItemSerializer(serializers.ModelSerializer):

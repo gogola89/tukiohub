@@ -17,22 +17,44 @@ def process_successful_payment(self, transaction_id):
         transaction_id (str): UUID of the transaction
 
     Tasks:
-        1. Confirm booking (if linked)
-        2. Generate tickets
-        3. Send confirmation email/SMS
-        4. Update ticket inventory
+        1. Confirm booking (if linked to booking)
+        2. Add money to wallet (if wallet top-up)
+        3. Generate tickets (if booking)
+        4. Send confirmation email/SMS
+        5. Update ticket inventory (if booking)
     """
     from .models import Transaction
     from apps.bookings.models import Booking
     from apps.bookings.services import BookingService
+    from apps.users.models import Attendee, WalletTransaction
 
     try:
-        transaction = Transaction.objects.select_related('booking').get(id=transaction_id)
+        transaction = Transaction.objects.select_related('booking', 'attendee').get(id=transaction_id)
 
         logger.info(f"Processing successful payment for transaction: {transaction.transaction_reference}")
 
+        # Check if this is a wallet top-up transaction
+        if transaction.attendee and not transaction.booking:
+            # This is a wallet top-up
+            attendee = transaction.attendee
+            amount = transaction.amount
+
+            logger.info(f"Processing wallet top-up for attendee: {attendee.email}, Amount: {amount}")
+
+            # Add money to wallet
+            attendee.add_to_wallet(
+                amount=amount,
+                description=f"M-Pesa deposit - {transaction.mpesa_receipt_number or transaction.transaction_reference}",
+                transaction_type=WalletTransaction.DEPOSIT
+            )
+
+            logger.info(f"Wallet top-up successful. New balance: {attendee.wallet_balance}")
+
+            # Optional: Send confirmation email/SMS for wallet deposit
+            # You can implement this later if needed
+
         # Check if transaction has linked booking
-        if transaction.booking:
+        elif transaction.booking:
             booking = transaction.booking
 
             logger.info(f"Transaction linked to booking: {booking.booking_reference}")
@@ -53,7 +75,7 @@ def process_successful_payment(self, transaction_id):
             logger.info(f"Ticket generation task queued for booking {booking.booking_reference}")
 
         else:
-            logger.warning(f"Transaction {transaction.transaction_reference} has no linked booking")
+            logger.warning(f"Transaction {transaction.transaction_reference} has no linked booking or attendee")
 
         return {
             'success': True,

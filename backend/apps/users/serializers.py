@@ -5,11 +5,12 @@ Serializers for users app
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import User, PasswordReset
+from django.core.validators import MinValueValidator
+from .models import User, Attendee, PasswordReset, WalletTransaction
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for User profile"""
+    """Serializer for User profile (organizers/admins)"""
 
     class Meta:
         model = User
@@ -19,6 +20,19 @@ class UserSerializer(serializers.ModelSerializer):
             'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'email', 'role', 'verification_status', 'email_verified', 'created_at', 'updated_at']
+
+
+class AttendeeSerializer(serializers.ModelSerializer):
+    """Serializer for Attendee profile (system users)"""
+
+    class Meta:
+        model = Attendee
+        fields = [
+            'id', 'email', 'first_name', 'last_name', 'phone_number',
+            'role', 'wallet_balance', 'email_verified', 'phone_verified',
+            'is_active', 'is_subscribed', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'email', 'wallet_balance', 'email_verified', 'phone_verified', 'created_at', 'updated_at']
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -48,8 +62,36 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
+class AttendeeRegistrationSerializer(serializers.ModelSerializer):
+    """Serializer for attendee registration"""
+
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True, required=True, label='Confirm Password')
+
+    class Meta:
+        model = Attendee
+        fields = ['email', 'first_name', 'last_name', 'phone_number', 'password', 'password2', 'is_subscribed']
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('password2')
+        attendee = Attendee.objects.create_user(
+            email=validated_data['email'],
+            password=validated_data['password'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            phone_number=validated_data.get('phone_number', ''),
+            is_subscribed=validated_data.get('is_subscribed', False)
+        )
+        return attendee
+
+
 class UserLoginSerializer(serializers.Serializer):
-    """Serializer for user login"""
+    """Serializer for user login (organizers/admins)"""
 
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
@@ -78,17 +120,98 @@ class UserLoginSerializer(serializers.Serializer):
         return attrs
 
 
+class AttendeeLoginSerializer(serializers.Serializer):
+    """Serializer for attendee login"""
+
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        if email and password:
+            # Custom authentication for Attendee
+            try:
+                attendee = Attendee.objects.get(email=email)
+                if not attendee.check_password(password):
+                    raise serializers.ValidationError('Unable to log in with provided credentials.')
+
+                if not attendee.is_active:
+                    raise serializers.ValidationError('Attendee account is disabled.')
+            except Attendee.DoesNotExist:
+                raise serializers.ValidationError('Unable to log in with provided credentials.')
+        else:
+            raise serializers.ValidationError('Must include "email" and "password".')
+
+        attrs['attendee'] = attendee
+        return attrs
+
+
+class UnifiedLoginSerializer(serializers.Serializer):
+    """
+    Unified login serializer that handles both User and Attendee models
+    Automatically detects the user type based on the email
+    """
+
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        if not email or not password:
+            raise serializers.ValidationError('Must include "email" and "password".')
+
+        # Try to authenticate as User (organizer/admin) first
+        user = authenticate(
+            request=self.context.get('request'),
+            username=email,
+            password=password
+        )
+
+        if user:
+            if not user.is_active:
+                raise serializers.ValidationError('User account is disabled.')
+            attrs['authenticated_user'] = user
+            attrs['user_type'] = 'organizer'
+            return attrs
+
+        # If not found as User, try Attendee
+        try:
+            attendee = Attendee.objects.get(email=email)
+            if not attendee.check_password(password):
+                raise serializers.ValidationError('Unable to log in with provided credentials.')
+
+            if not attendee.is_active:
+                raise serializers.ValidationError('Account is disabled.')
+
+            attrs['authenticated_user'] = attendee
+            attrs['user_type'] = 'attendee'
+            return attrs
+
+        except Attendee.DoesNotExist:
+            raise serializers.ValidationError('Unable to log in with provided credentials.')
+
+        raise serializers.ValidationError('Unable to log in with provided credentials.')
+
+
 class PasswordResetRequestSerializer(serializers.Serializer):
     """Serializer for requesting password reset"""
 
     email = serializers.EmailField(required=True)
 
     def validate_email(self, value):
+        # Check both User and Attendee models
         try:
             User.objects.get(email=value)
         except User.DoesNotExist:
-            # Don't reveal if email exists or not
-            pass
+            try:
+                Attendee.objects.get(email=value)
+            except Attendee.DoesNotExist:
+                # Don't reveal if email exists or not
+                pass
         return value
 
 
@@ -172,6 +295,50 @@ class DocumentUploadSerializer(serializers.Serializer):
         return value
 
 
+class WalletTransactionSerializer(serializers.ModelSerializer):
+    """Serializer for wallet transactions"""
+
+    class Meta:
+        model = WalletTransaction
+        fields = [
+            'id', 'attendee', 'transaction_type', 'amount', 'description',
+            'booking', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class AddToWalletSerializer(serializers.Serializer):
+    """Serializer for adding money to wallet via M-Pesa"""
+
+    amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)]
+    )
+    phone_number = serializers.CharField(
+        max_length=15,
+        required=False,
+        help_text="Phone number for M-Pesa payment (254XXXXXXXXX). If not provided, uses attendee's phone number."
+    )
+    description = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+        default='Wallet top-up'
+    )
+
+
+class WalletTransferSerializer(serializers.Serializer):
+    """Serializer for wallet transfers between attendees"""
+
+    amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)]
+    )
+    recipient_email = serializers.EmailField()
+
+
 # Admin Serializers
 
 class AdminOrganizerListSerializer(serializers.ModelSerializer):
@@ -202,6 +369,36 @@ class AdminOrganizerDetailSerializer(serializers.ModelSerializer):
             'id', 'email', 'company_name', 'phone_number', 'logo',
             'role', 'verification_status', 'email_verified', 'verification_documents',
             'is_active', 'is_staff', 'created_at', 'updated_at', 'last_login'
+        ]
+        read_only_fields = fields
+
+
+class AdminAttendeeListSerializer(serializers.ModelSerializer):
+    """Serializer for admin view of attendees list"""
+
+    full_name = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Attendee
+        fields = [
+            'id', 'email', 'full_name', 'phone_number', 'role',
+            'wallet_balance', 'email_verified', 'phone_verified',
+            'is_active', 'is_subscribed', 'created_at', 'updated_at'
+        ]
+        read_only_fields = fields
+
+
+class AdminAttendeeDetailSerializer(serializers.ModelSerializer):
+    """Serializer for admin view of attendee details"""
+
+    full_name = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Attendee
+        fields = [
+            'id', 'email', 'full_name', 'phone_number', 'role',
+            'wallet_balance', 'email_verified', 'phone_verified',
+            'is_active', 'is_subscribed', 'created_at', 'updated_at'
         ]
         read_only_fields = fields
 
@@ -244,6 +441,17 @@ class AdminUpdateOrganizerSerializer(serializers.ModelSerializer):
         if value not in valid_statuses:
             raise serializers.ValidationError("Invalid verification status.")
         return value
+
+
+class AdminUpdateAttendeeSerializer(serializers.ModelSerializer):
+    """Serializer for admin to update attendee details"""
+
+    class Meta:
+        model = Attendee
+        fields = [
+            'first_name', 'last_name', 'phone_number', 'role',
+            'is_active', 'is_subscribed'
+        ]
 
 
 class AdminDashboardSerializer(serializers.Serializer):

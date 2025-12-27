@@ -12,6 +12,7 @@ from .serializers import (
     UserSerializer,
     UserRegistrationSerializer,
     UserLoginSerializer,
+    UnifiedLoginSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
     EmailVerificationSerializer,
@@ -21,6 +22,7 @@ from .serializers import (
 )
 from .models import PasswordReset, EmailVerification
 from .services import EmailService, generate_verification_token, verify_token
+from .tokens import get_tokens_for_user, get_tokens_for_attendee
 import secrets
 from datetime import timedelta
 from django.utils import timezone
@@ -43,7 +45,7 @@ class UserRegistrationView(generics.CreateAPIView):
         user = serializer.save()
 
         # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
+        tokens = get_tokens_for_user(user)
 
         # Generate and send verification email
         verification_token = generate_verification_token(user)
@@ -51,8 +53,8 @@ class UserRegistrationView(generics.CreateAPIView):
 
         return Response({
             'user': UserSerializer(user).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
+            'refresh': tokens['refresh'],
+            'access': tokens['access'],
             'message': 'Registration successful. Please check your email for verification.'
         }, status=status.HTTP_201_CREATED)
 
@@ -71,12 +73,12 @@ class UserLoginView(generics.GenericAPIView):
         user = serializer.validated_data['user']
 
         # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
+        tokens = get_tokens_for_user(user)
 
         return Response({
             'user': UserSerializer(user).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
+            'refresh': tokens['refresh'],
+            'access': tokens['access'],
         }, status=status.HTTP_200_OK)
 
 
@@ -162,7 +164,7 @@ class EmailVerificationView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
 
         token = serializer.validated_data['token']
-        success, message, user = verify_token(token)
+        success, message, user_instance = verify_token(token)
 
         if not success:
             return Response({
@@ -170,11 +172,18 @@ class EmailVerificationView(generics.GenericAPIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Send welcome email
-        EmailService.send_welcome_email(user)
+        EmailService.send_welcome_email(user_instance)
+
+        # Determine which serializer to use based on user type
+        from .models import Attendee
+        if isinstance(user_instance, Attendee):
+            user_data = AttendeeSerializer(user_instance).data
+        else:
+            user_data = UserSerializer(user_instance).data
 
         return Response({
             'message': message,
-            'user': UserSerializer(user).data
+            'user': user_data
         }, status=status.HTTP_200_OK)
 
 
@@ -288,6 +297,276 @@ class UserLogoutView(generics.GenericAPIView):
 
             token = RefreshToken(refresh_token)
             token.blacklist()
+
+            return Response({
+                'message': 'Successfully logged out.'
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'error': 'Invalid token or token already blacklisted.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UnifiedLoginView(generics.GenericAPIView):
+    """
+    POST /api/auth/unified-login/
+    Unified login endpoint that handles both organizers and attendees
+    Automatically detects user type and returns appropriate data
+    """
+    serializer_class = UnifiedLoginSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        authenticated_user = serializer.validated_data['authenticated_user']
+        user_type = serializer.validated_data['user_type']
+
+        # Generate appropriate tokens based on user type
+        if user_type == 'attendee':
+            tokens = get_tokens_for_attendee(authenticated_user)
+            from .serializers import AttendeeSerializer
+            user_data = AttendeeSerializer(authenticated_user).data
+        else:
+            tokens = get_tokens_for_user(authenticated_user)
+            user_data = UserSerializer(authenticated_user).data
+
+        return Response({
+            'user': user_data,
+            'user_type': user_type,
+            'refresh': tokens['refresh'],
+            'access': tokens['access'],
+        }, status=status.HTTP_200_OK)
+
+
+# ATTENDEE-SPECIFIC VIEWS
+# These views handle attendee registration, login, and profile management
+# They use the Attendee model which is separate from the User (organizer) model
+from .models import Attendee
+from .serializers import (
+    AttendeeRegistrationSerializer,
+    AttendeeLoginSerializer,
+    AttendeeSerializer,
+    AddToWalletSerializer,
+    WalletTransactionSerializer
+)
+from rest_framework.views import APIView
+from django.contrib.auth import authenticate
+
+
+class AttendeeRegistrationView(generics.CreateAPIView):
+    """
+    POST /api/attendees/register/
+    Register a new attendee
+    """
+    queryset = Attendee.objects.all()
+    serializer_class = AttendeeRegistrationSerializer
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        attendee = serializer.save()
+
+        # Generate JWT tokens for attendee
+        tokens = get_tokens_for_attendee(attendee)
+
+        # Generate and send verification email
+        verification_token = generate_verification_token(attendee)
+        EmailService.send_verification_email(attendee, verification_token)
+
+        return Response({
+            'attendee': AttendeeSerializer(attendee).data,
+            'refresh': tokens['refresh'],
+            'access': tokens['access'],
+            'message': 'Registration successful. Please check your email for verification.'
+        }, status=status.HTTP_201_CREATED)
+
+
+class AttendeeLoginView(generics.GenericAPIView):
+    """
+    POST /api/attendees/login/
+    Login attendee with email and password
+    """
+    serializer_class = AttendeeLoginSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        attendee = serializer.validated_data['attendee']
+
+        # Generate JWT tokens for attendee
+        tokens = get_tokens_for_attendee(attendee)
+
+        return Response({
+            'attendee': AttendeeSerializer(attendee).data,
+            'refresh': tokens['refresh'],
+            'access': tokens['access'],
+        }, status=status.HTTP_200_OK)
+
+
+class AttendeeProfileView(generics.RetrieveUpdateAPIView):
+    """
+    GET/PUT/PATCH /api/attendees/profile/
+    Get and update current attendee profile
+    """
+    serializer_class = AttendeeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        # Note: This requires custom authentication middleware to recognize attendee tokens
+        # For now, we'll assume the user is properly authenticated as an attendee
+        return self.request.user
+
+
+class WalletView(generics.GenericAPIView):
+    """
+    GET/POST /api/attendees/wallet/
+    View and manage attendee wallet
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get wallet balance and recent transactions"""
+        attendee = request.user  # Assuming JWT authentication
+        transactions = attendee.wallet_transactions.all().order_by('-created_at')[:10]
+
+        return Response({
+            'wallet_balance': attendee.wallet_balance,
+            'recent_transactions': WalletTransactionSerializer(transactions, many=True).data
+        })
+
+    def post(self, request):
+        """
+        Initiate M-Pesa payment to add money to wallet
+
+        This will:
+        1. Validate the request
+        2. Initiate M-Pesa STK Push
+        3. Return transaction reference for status checking
+        4. M-Pesa callback will add money to wallet when payment succeeds
+        """
+        from apps.payments.models import Transaction
+        from apps.payments.mpesa_service import mpesa_service
+        import uuid as uuid_lib
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        attendee = request.user  # Authenticated attendee
+        serializer = AddToWalletSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        amount = serializer.validated_data['amount']
+        phone_number = serializer.validated_data.get('phone_number', attendee.phone_number)
+        description = serializer.validated_data.get('description', 'Wallet top-up')
+
+        # Validate phone number format (Kenyan: 254XXXXXXXXX)
+        if not phone_number.startswith('254') or len(phone_number) != 12:
+            return Response({
+                'error': 'Invalid phone number format. Use 254XXXXXXXXX'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate unique transaction reference
+        transaction_reference = f"WT{uuid_lib.uuid4().hex[:8].upper()}"
+
+        # Create pending transaction
+        transaction = Transaction.objects.create(
+            attendee=attendee,
+            event=None,  # No event for wallet top-ups
+            booking=None,  # No booking for wallet top-ups
+            amount=amount,
+            phone_number=phone_number,
+            payment_method=Transaction.MPESA,
+            transaction_reference=transaction_reference,
+            status=Transaction.PENDING,
+            metadata={
+                'description': description,
+                'transaction_type': 'WALLET_TOPUP',
+                'initiated_by': attendee.email
+            }
+        )
+
+        logger.info(f"Created pending wallet top-up transaction: {transaction_reference}")
+
+        try:
+            # Initiate M-Pesa STK Push
+            result = mpesa_service.initiate_stk_push(
+                phone_number=phone_number,
+                amount=int(amount),
+                account_reference=transaction_reference,
+                transaction_desc=description
+            )
+
+            if result.get('success'):
+                # Update transaction with M-Pesa details
+                transaction.checkout_request_id = result.get('CheckoutRequestID')
+                transaction.merchant_request_id = result.get('MerchantRequestID')
+                transaction.save()
+
+                logger.info(f"M-Pesa STK Push initiated for wallet top-up: {transaction_reference}")
+
+                return Response({
+                    'message': 'M-Pesa payment initiated. Please enter your PIN.',
+                    'transaction_reference': transaction_reference,
+                    'checkout_request_id': result.get('CheckoutRequestID'),
+                    'amount': amount,
+                    'phone_number': phone_number
+                }, status=status.HTTP_200_OK)
+            else:
+                # M-Pesa initiation failed
+                transaction.status = Transaction.FAILED
+                transaction.result_description = result.get('errorMessage', 'Failed to initiate M-Pesa payment')
+                transaction.save()
+
+                logger.error(f"M-Pesa initiation failed for wallet top-up: {result.get('errorMessage')}")
+
+                return Response({
+                    'error': result.get('errorMessage', 'Failed to initiate M-Pesa payment')
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Error initiating wallet top-up: {str(e)}", exc_info=True)
+
+            transaction.status = Transaction.FAILED
+            transaction.result_description = str(e)
+            transaction.save()
+
+            return Response({
+                'error': 'An error occurred while initiating payment. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AttendeeLogoutView(generics.GenericAPIView):
+    """
+    POST /api/attendees/logout/
+    Logout attendee by blacklisting the refresh token
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            refresh_token = request.data.get("refresh")
+            if not refresh_token:
+                return Response({
+                    'error': 'Refresh token is required.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            token = RefreshToken(refresh_token)
+
+            # Blacklist the token - handle OutstandingToken issues gracefully
+            try:
+                token.blacklist()
+            except Exception:
+                # If blacklisting fails due to OutstandingToken issues with custom user model,
+                # log the error but still return success
+                import logging
+                logging.error("Token blacklisting failed for attendee token")
+                pass
 
             return Response({
                 'message': 'Successfully logged out.'

@@ -22,7 +22,7 @@ class TicketTypeSerializer(serializers.ModelSerializer):
             'sales_start_date', 'sales_end_date', 'is_active',
             'is_available_now', 'created_at'
         ]
-        read_only_fields = ['id', 'quantity_sold', 'created_at']
+        read_only_fields = ['id', 'event', 'quantity_sold', 'created_at']
 
     def get_is_available_now(self, obj):
         """Check if ticket type is currently available"""
@@ -36,16 +36,23 @@ class TicketTypeSerializer(serializers.ModelSerializer):
                     'sales_end_date': 'Sales end date must be after sales start date.'
                 })
 
-        # Validate that sales period is within event period
-        event = attrs.get('event') or self.instance.event if self.instance else None
+        # Validate that sales period is within reasonable bounds
+        # For nested routes, the event will be available in the context
+        event = self.context.get('event') or (self.instance.event if self.instance else None)
         if event:
-            if attrs.get('sales_start_date') and attrs['sales_start_date'] < event.created_at:
+            sales_start_date = attrs.get('sales_start_date')
+            sales_end_date = attrs.get('sales_end_date')
+
+            # Sales should start before the event ends
+            if sales_start_date and sales_start_date > event.end_datetime:
                 raise serializers.ValidationError({
-                    'sales_start_date': 'Sales cannot start before event is created.'
+                    'sales_start_date': 'Sales cannot start after event has ended.'
                 })
-            if attrs.get('sales_end_date') and attrs['sales_end_date'] > event.end_datetime:
+
+            # Sales should end before or when the event ends (not after)
+            if sales_end_date and sales_end_date > event.end_datetime:
                 raise serializers.ValidationError({
-                    'sales_end_date': 'Sales cannot end after event ends.'
+                    'sales_end_date': 'Sales cannot end after event has ended.'
                 })
 
         return attrs
@@ -64,7 +71,7 @@ class PromoCodeSerializer(serializers.ModelSerializer):
             'usage_limit', 'times_used', 'valid_from', 'valid_until',
             'is_active', 'is_valid_now', 'can_be_used_now', 'created_at'
         ]
-        read_only_fields = ['id', 'times_used', 'created_at']
+        read_only_fields = ['id', 'event', 'times_used', 'created_at']
 
     def get_is_valid_now(self, obj):
         """Check if promo code is valid now"""
@@ -106,7 +113,7 @@ class EventAddOnSerializer(serializers.ModelSerializer):
             'id', 'event', 'name', 'description', 'price',
             'quantity_available', 'is_unlimited', 'is_active', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'event', 'created_at']
 
 
 class EventImageSerializer(serializers.ModelSerializer):
@@ -215,28 +222,48 @@ class EventCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """Validate event data"""
-        # Validate datetime
-        if attrs.get('end_datetime') and attrs.get('start_datetime'):
-            if attrs['end_datetime'] <= attrs['start_datetime']:
+        # Validate datetime only if both fields are being updated
+        start_datetime = attrs.get('start_datetime')
+        end_datetime = attrs.get('end_datetime')
+
+        # If both datetimes are being updated, validate they're in correct order
+        if start_datetime is not None and end_datetime is not None:
+            if end_datetime <= start_datetime:
                 raise serializers.ValidationError({
                     'end_datetime': 'End datetime must be after start datetime.'
                 })
+        # If only one is being updated, validate against existing instance
+        elif self.instance:
+            if start_datetime is not None:
+                # If end_datetime is being updated in attrs, use that; otherwise use existing
+                check_end_datetime = attrs.get('end_datetime') or self.instance.end_datetime
+                if check_end_datetime and start_datetime >= check_end_datetime:
+                    raise serializers.ValidationError({
+                        'start_datetime': 'Start datetime must be before end datetime.'
+                    })
+            if end_datetime is not None:
+                # If start_datetime is being updated in attrs, use that; otherwise use existing
+                check_start_datetime = attrs.get('start_datetime') or self.instance.start_datetime
+                if check_start_datetime and end_datetime <= check_start_datetime:
+                    raise serializers.ValidationError({
+                        'end_datetime': 'End datetime must be after start datetime.'
+                    })
 
         # Validate start datetime is in the future (only for new events)
-        if not self.instance and attrs.get('start_datetime'):
+        if not self.instance and 'start_datetime' in attrs and attrs['start_datetime']:
             if attrs['start_datetime'] <= timezone.now():
                 raise serializers.ValidationError({
                     'start_datetime': 'Event start time must be in the future.'
                 })
 
-        # Validate capacity
-        if attrs.get('capacity', 0) <= 0:
+        # Validate capacity only if it's being updated
+        if 'capacity' in attrs and attrs['capacity'] <= 0:
             raise serializers.ValidationError({
                 'capacity': 'Capacity must be greater than zero.'
             })
 
-        # Validate age restriction
-        if attrs.get('age_restriction') is not None:
+        # Validate age restriction only if it's being updated
+        if 'age_restriction' in attrs and attrs['age_restriction'] is not None:
             if attrs['age_restriction'] < 0 or attrs['age_restriction'] > 100:
                 raise serializers.ValidationError({
                     'age_restriction': 'Age restriction must be between 0 and 100.'
