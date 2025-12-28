@@ -104,7 +104,7 @@ def process_successful_payment(self, transaction_id):
 
 
 @shared_task(bind=True, max_retries=3)
-def check_pending_transactions():
+def check_pending_transactions(self):
     """
     Periodic task to check status of pending transactions
     Run every 5 minutes via Celery Beat

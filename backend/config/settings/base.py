@@ -232,6 +232,35 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
+# Celery Beat Schedule - Periodic Tasks
+CELERY_BEAT_SCHEDULE = {
+    # Auto-complete events when ticket sales have ended
+    'auto-complete-events': {
+        'task': 'apps.events.tasks.auto_complete_events_task',
+        'schedule': 3600.0,  # Run every hour (3600 seconds)
+    },
+    # Auto-complete events when the event has finished
+    'auto-complete-finished-events': {
+        'task': 'apps.events.tasks.auto_complete_finished_events_task',
+        'schedule': 3600.0,  # Run every hour
+    },
+    # Cleanup old draft events (weekly)
+    'cleanup-draft-events': {
+        'task': 'apps.events.tasks.cleanup_draft_events_task',
+        'schedule': 604800.0,  # Run once per week (7 days * 24 hours * 3600 seconds)
+    },
+    # Schedule event reminders (daily)
+    'schedule-event-reminders': {
+        'task': 'apps.bookings.tasks.schedule_event_reminders_task',
+        'schedule': 86400.0,  # Run once per day (24 hours * 3600 seconds)
+    },
+    # Cleanup expired bookings (weekly)
+    'cleanup-expired-bookings': {
+        'task': 'apps.bookings.tasks.cleanup_expired_bookings_task',
+        'schedule': 604800.0,  # Run once per week
+    },
+}
+
 
 # Channels (WebSocket)
 CHANNEL_LAYERS = {
