@@ -231,6 +231,18 @@ class TicketType(models.Model):
     sales_start_date = models.DateTimeField()
     sales_end_date = models.DateTimeField()
 
+    # Purchase limits
+    min_purchase = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(100)],
+        help_text="Minimum number of tickets per order"
+    )
+    max_purchase = models.IntegerField(
+        default=10,
+        validators=[MinValueValidator(1), MaxValueValidator(100)],
+        help_text="Maximum number of tickets per order"
+    )
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -250,6 +262,10 @@ class TicketType(models.Model):
         if self.quantity_sold is not None and self.quantity_available is not None:
             if self.quantity_sold > self.quantity_available:
                 raise ValidationError('Quantity sold cannot exceed quantity available.')
+
+        if self.max_purchase and self.min_purchase:
+            if self.max_purchase < self.min_purchase:
+                raise ValidationError('Maximum purchase must be greater than or equal to minimum purchase.')
 
     @property
     def available_quantity(self):

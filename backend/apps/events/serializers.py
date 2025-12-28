@@ -19,8 +19,8 @@ class TicketTypeSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'event', 'name', 'description', 'price',
             'quantity_available', 'quantity_sold', 'available_quantity',
-            'sales_start_date', 'sales_end_date', 'is_active',
-            'is_available_now', 'created_at'
+            'sales_start_date', 'sales_end_date', 'min_purchase', 'max_purchase',
+            'is_active', 'is_available_now', 'created_at'
         ]
         read_only_fields = ['id', 'event', 'quantity_sold', 'created_at']
 
@@ -43,17 +43,26 @@ class TicketTypeSerializer(serializers.ModelSerializer):
             sales_start_date = attrs.get('sales_start_date')
             sales_end_date = attrs.get('sales_end_date')
 
-            # Sales should start before the event ends
-            if sales_start_date and sales_start_date > event.end_datetime:
+            # Sales should start before the event starts
+            if sales_start_date and sales_start_date > event.start_datetime:
                 raise serializers.ValidationError({
-                    'sales_start_date': 'Sales cannot start after event has ended.'
+                    'sales_start_date': 'Sales cannot start after event has started.'
                 })
 
-            # Sales should end before or when the event ends (not after)
-            if sales_end_date and sales_end_date > event.end_datetime:
+            # Sales should end before or when the event starts (to allow ticket sales up to event time)
+            if sales_end_date and sales_end_date > event.start_datetime:
                 raise serializers.ValidationError({
-                    'sales_end_date': 'Sales cannot end after event has ended.'
+                    'sales_end_date': 'Sales must end before or when the event starts.'
                 })
+
+        # Validate purchase limits
+        min_purchase = attrs.get('min_purchase', self.instance.min_purchase if self.instance else 1)
+        max_purchase = attrs.get('max_purchase', self.instance.max_purchase if self.instance else 10)
+
+        if max_purchase < min_purchase:
+            raise serializers.ValidationError({
+                'max_purchase': 'Maximum purchase must be greater than or equal to minimum purchase.'
+            })
 
         return attrs
 
