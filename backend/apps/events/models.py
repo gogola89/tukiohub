@@ -341,6 +341,10 @@ class PromoCode(models.Model):
 
     def is_valid(self):
         """Check if promo code is valid"""
+        # Return False if dates are not set (e.g., in Django admin before saving)
+        if not self.valid_from or not self.valid_until:
+            return False
+
         now = timezone.now()
         return (
             self.is_active and
