@@ -382,11 +382,17 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
         Validate a promo code (public endpoint)
 
         POST /api/events/<event_id>/promo-codes/validate/
-        Body: { "code": "PROMO2024" }
+        Body: {
+            "code": "PROMO2024",
+            "attendee_email": "user@example.com" (optional)
+        }
 
         Returns promo code details if valid, error message if invalid.
         """
+        from apps.bookings.models import Booking
+
         code = request.data.get('code', '').strip().upper()
+        attendee_email = request.data.get('attendee_email', '').strip().lower()
 
         if not code:
             return Response(
@@ -402,7 +408,7 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
         except PromoCode.DoesNotExist:
             return Response(
                 {'valid': False, 'message': 'Invalid promo code'},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         # Check if promo code can be used
@@ -412,7 +418,7 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
             elif not promo_code.is_valid():
                 message = 'This promo code has expired or is not yet valid'
             elif promo_code.usage_limit and promo_code.times_used >= promo_code.usage_limit:
-                message = 'This promo code has reached its usage limit'
+                message = 'This promo code has already been used'
             else:
                 message = 'This promo code cannot be used'
 
@@ -421,13 +427,26 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Check if this user has already used this promo code
+        if attendee_email:
+            existing_booking = Booking.objects.filter(
+                promo_code=promo_code,
+                attendee_email__iexact=attendee_email,
+                status__in=[Booking.STATUS_CONFIRMED, Booking.STATUS_PENDING]
+            ).first()
+
+            if existing_booking:
+                return Response(
+                    {'valid': False, 'message': 'You have already used this promo code'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         # Return promo code details
         return Response({
             'valid': True,
             'code': promo_code.code,
             'discount_type': promo_code.discount_type,
             'discount_value': float(promo_code.discount_value),
-            'min_purchase_amount': float(promo_code.min_purchase_amount) if promo_code.min_purchase_amount else None,
             'message': 'Promo code is valid'
         }, status=status.HTTP_200_OK)
 
