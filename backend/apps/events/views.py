@@ -312,10 +312,17 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
     - GET /api/events/<event_id>/promo-codes/
     - PUT /api/events/<event_id>/promo-codes/<id>/
     - DELETE /api/events/<event_id>/promo-codes/<id>/
+    - POST /api/events/<event_id>/promo-codes/validate/ (public)
     """
 
     serializer_class = PromoCodeSerializer
     permission_classes = [IsAuthenticated, IsEventOrganizer]
+
+    def get_permissions(self):
+        """Allow unauthenticated access to validate action"""
+        if self.action == 'validate':
+            return []
+        return super().get_permissions()
 
     def get_queryset(self):
         """Get promo codes for the specified event"""
@@ -324,6 +331,12 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
             return PromoCode.objects.none()
 
         event_id = self.kwargs.get('event_pk')
+
+        # For validate action, get all promo codes for the event
+        if self.action == 'validate':
+            return PromoCode.objects.filter(event_id=event_id).select_related('event')
+
+        # For other actions, only get promo codes for organizer's events
         return PromoCode.objects.filter(
             event_id=event_id,
             event__organizer=self.request.user
@@ -362,6 +375,61 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
         """Delete promo code"""
         logger.info(f"Promo code deleted: {instance.code}")
         instance.delete()
+
+    @action(detail=False, methods=['post'])
+    def validate(self, request, event_pk=None):
+        """
+        Validate a promo code (public endpoint)
+
+        POST /api/events/<event_id>/promo-codes/validate/
+        Body: { "code": "PROMO2024" }
+
+        Returns promo code details if valid, error message if invalid.
+        """
+        code = request.data.get('code', '').strip().upper()
+
+        if not code:
+            return Response(
+                {'valid': False, 'message': 'Promo code is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            promo_code = PromoCode.objects.get(
+                event_id=event_pk,
+                code=code
+            )
+        except PromoCode.DoesNotExist:
+            return Response(
+                {'valid': False, 'message': 'Invalid promo code'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if promo code can be used
+        if not promo_code.can_be_used():
+            if not promo_code.is_active:
+                message = 'This promo code is no longer active'
+            elif not promo_code.is_valid():
+                message = 'This promo code has expired or is not yet valid'
+            elif promo_code.usage_limit and promo_code.times_used >= promo_code.usage_limit:
+                message = 'This promo code has reached its usage limit'
+            else:
+                message = 'This promo code cannot be used'
+
+            return Response(
+                {'valid': False, 'message': message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Return promo code details
+        return Response({
+            'valid': True,
+            'code': promo_code.code,
+            'discount_type': promo_code.discount_type,
+            'discount_value': float(promo_code.discount_value),
+            'min_purchase_amount': float(promo_code.min_purchase_amount) if promo_code.min_purchase_amount else None,
+            'message': 'Promo code is valid'
+        }, status=status.HTTP_200_OK)
 
 
 class EventAddOnViewSet(viewsets.ModelViewSet):
