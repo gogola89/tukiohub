@@ -27,7 +27,7 @@ def auto_complete_events_task():
         now = timezone.now()
 
         # Find all PUBLISHED events
-        published_events = Event.objects.filter(status=Event.STATUS_PUBLISHED)
+        published_events = Event.objects.filter(status=Event.PUBLISHED)
 
         completed_count = 0
         for event in published_events:
@@ -38,7 +38,7 @@ def auto_complete_events_task():
 
             # If event has ticket types and all sales have ended
             if latest_sales_end and latest_sales_end <= now:
-                event.status = Event.STATUS_COMPLETED
+                event.status = Event.COMPLETED
                 event.save(update_fields=['status', 'updated_at'])
                 completed_count += 1
                 logger.info(
@@ -72,7 +72,7 @@ def auto_complete_finished_events_task():
 
         # Find all PUBLISHED events that have ended
         events_to_complete = Event.objects.filter(
-            status=Event.STATUS_PUBLISHED,
+            status=Event.PUBLISHED,
             end_datetime__lte=now
         )
 
@@ -81,7 +81,7 @@ def auto_complete_finished_events_task():
         if completed_count > 0:
             # Update all matching events
             events_to_complete.update(
-                status=Event.STATUS_COMPLETED,
+                status=Event.COMPLETED,
                 updated_at=now
             )
 
@@ -121,7 +121,7 @@ def cleanup_draft_events_task():
 
         # Find old draft events
         old_drafts = Event.objects.filter(
-            status=Event.STATUS_DRAFT,
+            status=Event.DRAFT,
             updated_at__lt=cutoff_date
         )
 
