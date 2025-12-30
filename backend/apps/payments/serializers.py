@@ -144,3 +144,38 @@ class MpesaCallbackSerializer(serializers.Serializer):
         if 'stkCallback' not in value:
             raise serializers.ValidationError("Invalid callback structure")
         return value
+
+
+class CreateStripePaymentIntentSerializer(serializers.Serializer):
+    """
+    Serializer for creating Stripe Payment Intent
+    """
+    event_id = serializers.UUIDField(required=True)
+    amount = serializers.DecimalField(required=True, max_digits=10, decimal_places=2, min_value=1)
+    account_reference = serializers.CharField(required=True, max_length=100)
+
+    def validate_event_id(self, value):
+        """Validate event exists and is published"""
+        try:
+            event = Event.objects.get(id=value)
+            if event.status != Event.PUBLISHED:
+                raise serializers.ValidationError("Event is not published")
+            if event.is_past:
+                raise serializers.ValidationError("Cannot make payment for past events")
+        except Event.DoesNotExist:
+            raise serializers.ValidationError("Event not found")
+        return value
+
+    def validate_amount(self, value):
+        """Validate amount is at least 1 KES"""
+        if value < 1:
+            raise serializers.ValidationError("Amount must be at least 1 KES")
+        return value
+
+
+class ConfirmStripePaymentSerializer(serializers.Serializer):
+    """
+    Serializer for confirming Stripe payment
+    """
+    payment_intent_id = serializers.CharField(required=True, max_length=255)
+    transaction_reference = serializers.CharField(required=True, max_length=100)

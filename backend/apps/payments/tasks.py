@@ -44,7 +44,7 @@ def process_successful_payment(self, transaction_id):
             # Add money to wallet
             attendee.add_to_wallet(
                 amount=amount,
-                description=f"M-Pesa deposit - {transaction.mpesa_receipt_number or transaction.transaction_reference}",
+                description=f"{transaction.payment_method} deposit - {transaction.mpesa_receipt_number or transaction.stripe_payment_intent_id or transaction.transaction_reference}",
                 transaction_type=WalletTransaction.DEPOSIT
             )
 

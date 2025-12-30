@@ -19,7 +19,9 @@ from .serializers import (
     TransactionStatusSerializer,
     TransactionListSerializer,
     TransactionDetailSerializer,
-    MpesaCallbackSerializer
+    MpesaCallbackSerializer,
+    CreateStripePaymentIntentSerializer,
+    ConfirmStripePaymentSerializer
 )
 from .mpesa_service import mpesa_service
 from apps.events.models import Event
@@ -353,3 +355,200 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == 'list':
             return TransactionListSerializer
         return TransactionDetailSerializer
+
+
+class CreateStripePaymentIntentAPIView(generics.GenericAPIView):
+    """
+    Create Stripe Payment Intent
+
+    POST /api/payments/stripe/create-intent/
+
+    Request body:
+    {
+        "event_id": "uuid",
+        "amount": 1000.00,
+        "account_reference": "BK-ABC123"
+    }
+    """
+
+    serializer_class = CreateStripePaymentIntentSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """Create Stripe Payment Intent"""
+        serializer = self.get_serializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Extract validated data
+        event_id = serializer.validated_data['event_id']
+        amount = serializer.validated_data['amount']
+        account_reference = serializer.validated_data['account_reference']
+
+        # Get event
+        event = get_object_or_404(Event, id=event_id)
+
+        # Generate unique transaction reference
+        transaction_reference = f"TH{uuid.uuid4().hex[:8].upper()}"
+
+        # Try to find booking by account_reference
+        booking = None
+        try:
+            booking = Booking.objects.get(booking_reference=account_reference)
+            logger.info(f"Found booking {account_reference} to link to transaction")
+        except Booking.DoesNotExist:
+            logger.info(f"No booking found with reference {account_reference}")
+
+        # Create pending transaction
+        transaction = Transaction.objects.create(
+            event=event,
+            amount=amount,
+            phone_number='',  # Not required for card payments
+            payment_method=Transaction.CARD,
+            transaction_reference=transaction_reference,
+            status=Transaction.PENDING,
+            booking=booking,
+            metadata={
+                'account_reference': account_reference,
+                'initiated_by': request.user.email if request.user.is_authenticated else 'anonymous'
+            }
+        )
+
+        logger.info(f"Created pending transaction: {transaction_reference}")
+
+        # Create Stripe Payment Intent
+        from .stripe_service import stripe_service
+        stripe_response = stripe_service.create_payment_intent(
+            amount=amount,
+            account_reference=account_reference,
+            metadata={
+                'transaction_reference': transaction_reference,
+                'event_id': str(event_id),
+                'event_title': event.title
+            }
+        )
+
+        if stripe_response.get('success'):
+            # Update transaction with Stripe details
+            transaction.stripe_payment_intent_id = stripe_response.get('payment_intent_id')
+            transaction.save()
+
+            logger.info(f"Payment Intent created for transaction: {transaction_reference}")
+
+            return Response({
+                'success': True,
+                'transaction_reference': transaction_reference,
+                'client_secret': stripe_response.get('client_secret'),
+                'payment_intent_id': stripe_response.get('payment_intent_id'),
+                'publishable_key': stripe_service.publishable_key
+            }, status=status.HTTP_200_OK)
+        else:
+            # Mark transaction as failed
+            transaction.mark_as_failed(
+                result_description=stripe_response.get('error', 'Payment Intent creation failed')
+            )
+
+            logger.error(f"Payment Intent failed for transaction: {transaction_reference}")
+
+            return Response({
+                'success': False,
+                'error': stripe_response.get('error', 'Payment initiation failed'),
+                'transaction_reference': transaction_reference
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class StripeWebhookAPIView(generics.GenericAPIView):
+    """
+    Stripe webhook endpoint
+    Receives payment events from Stripe
+
+    POST /api/payments/stripe/webhook/
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """Process Stripe webhook"""
+        payload = request.body
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+
+        if not sig_header:
+            logger.error("No Stripe signature in request")
+            return Response({'error': 'No signature'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .stripe_service import stripe_service
+        event = stripe_service.construct_webhook_event(payload, sig_header)
+
+        if not event:
+            return Response({'error': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
+
+        logger.info(f"Received Stripe webhook: {event['type']}")
+
+        # Handle payment_intent.succeeded event
+        if event['type'] == 'payment_intent.succeeded':
+            payment_intent = event['data']['object']
+            payment_intent_id = payment_intent['id']
+
+            logger.info(f"Payment succeeded for Payment Intent: {payment_intent_id}")
+
+            # Find transaction by payment_intent_id
+            try:
+                transaction = Transaction.objects.get(
+                    stripe_payment_intent_id=payment_intent_id
+                )
+            except Transaction.DoesNotExist:
+                logger.error(f"Transaction not found for Payment Intent: {payment_intent_id}")
+                return Response({'error': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            # Only mark as completed if not already completed
+            if not transaction.is_successful:
+                transaction.mark_as_completed(
+                    result_code='0',
+                    result_description='Payment successful'
+                )
+
+                # Update metadata
+                transaction.metadata.update({
+                    'stripe_charge_id': payment_intent.get('latest_charge'),
+                    'payment_method_details': payment_intent.get('charges', {}).get('data', [{}])[0].get('payment_method_details')
+                })
+                transaction.save()
+
+                logger.info(f"Payment successful for transaction: {transaction.transaction_reference}")
+
+                # Trigger booking confirmation (async task)
+                from .tasks import process_successful_payment
+                process_successful_payment.delay(str(transaction.id))
+
+        # Handle payment_intent.payment_failed event
+        elif event['type'] == 'payment_intent.payment_failed':
+            payment_intent = event['data']['object']
+            payment_intent_id = payment_intent['id']
+
+            logger.info(f"Payment failed for Payment Intent: {payment_intent_id}")
+
+            # Find transaction
+            try:
+                transaction = Transaction.objects.get(
+                    stripe_payment_intent_id=payment_intent_id
+                )
+            except Transaction.DoesNotExist:
+                logger.error(f"Transaction not found for Payment Intent: {payment_intent_id}")
+                return Response({'error': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            # Mark as failed
+            if transaction.status not in [Transaction.FAILED, Transaction.COMPLETED]:
+                error_message = payment_intent.get('last_payment_error', {}).get('message', 'Payment failed')
+                transaction.mark_as_failed(
+                    result_code='1',
+                    result_description=error_message
+                )
+
+                logger.info(f"Payment failed for transaction: {transaction.transaction_reference}")
+
+        return Response({'status': 'success'}, status=status.HTTP_200_OK)

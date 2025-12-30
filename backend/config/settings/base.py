@@ -297,6 +297,7 @@ MPESA_CALLBACK_URL = config('MPESA_CALLBACK_URL', default='')
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
+STRIPE_CURRENCY = 'kes'  # Kenyan Shillings
 
 
 # AWS S3 Settings
