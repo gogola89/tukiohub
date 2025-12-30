@@ -259,6 +259,16 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.bookings.tasks.cleanup_expired_bookings_task',
         'schedule': 604800.0,  # Run once per week
     },
+    # Check pending payment transactions (every 5 minutes)
+    'check-pending-transactions': {
+        'task': 'apps.payments.tasks.check_pending_transactions',
+        'schedule': 300.0,  # Run every 5 minutes (5 * 60 seconds)
+    },
+    # Cleanup old pending transactions (daily)
+    'cleanup-old-pending-transactions': {
+        'task': 'apps.payments.tasks.cleanup_old_pending_transactions',
+        'schedule': 86400.0,  # Run once per day (24 hours * 3600 seconds)
+    },
 }
 
 
