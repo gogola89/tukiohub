@@ -109,28 +109,30 @@ def check_pending_transactions(self):
     Periodic task to check status of pending transactions
     Run every 5 minutes via Celery Beat
 
-    Queries M-Pesa for transactions that are still pending
+    Queries M-Pesa and Stripe for transactions that are still pending
     after 15 minutes and updates their status
     """
     from .models import Transaction
     from .mpesa_service import mpesa_service
+    from .stripe_service import stripe_service
     from django.utils import timezone
     from datetime import timedelta
 
     try:
-        # Get transactions pending for more than 15 minutes (allowing time for user to enter PIN)
+        # Get transactions pending for more than 15 minutes (allowing time for user to complete payment)
         fifteen_minutes_ago = timezone.now() - timedelta(minutes=15)
 
-        pending_transactions = Transaction.objects.filter(
+        # Check M-Pesa transactions
+        mpesa_transactions = Transaction.objects.filter(
             status=Transaction.PENDING,
             payment_method=Transaction.MPESA,
             checkout_request_id__isnull=False,
             created_at__lte=fifteen_minutes_ago
         )[:50]  # Limit to 50 at a time
 
-        logger.info(f"Checking {pending_transactions.count()} pending transactions")
+        logger.info(f"Checking {mpesa_transactions.count()} pending M-Pesa transactions")
 
-        for transaction in pending_transactions:
+        for transaction in mpesa_transactions:
             # Query M-Pesa for status
             mpesa_response = mpesa_service.query_transaction_status(
                 transaction.checkout_request_id
@@ -145,7 +147,7 @@ def check_pending_transactions(self):
                         result_code=result_code,
                         result_description=mpesa_response.get('result_desc')
                     )
-                    logger.info(f"Transaction {transaction.transaction_reference} marked as completed")
+                    logger.info(f"M-Pesa transaction {transaction.transaction_reference} marked as completed")
 
                     # Trigger booking confirmation
                     process_successful_payment.delay(str(transaction.id))
@@ -156,11 +158,55 @@ def check_pending_transactions(self):
                         result_code=result_code,
                         result_description=mpesa_response.get('result_desc')
                     )
-                    logger.info(f"Transaction {transaction.transaction_reference} marked as failed")
+                    logger.info(f"M-Pesa transaction {transaction.transaction_reference} marked as failed")
+
+        # Check Stripe card transactions
+        stripe_transactions = Transaction.objects.filter(
+            status=Transaction.PENDING,
+            payment_method=Transaction.CARD,
+            stripe_payment_intent_id__isnull=False,
+            created_at__lte=fifteen_minutes_ago
+        )[:50]  # Limit to 50 at a time
+
+        logger.info(f"Checking {stripe_transactions.count()} pending Stripe transactions")
+
+        for transaction in stripe_transactions:
+            # Query Stripe for Payment Intent status
+            stripe_response = stripe_service.retrieve_payment_intent(
+                transaction.stripe_payment_intent_id
+            )
+
+            if stripe_response.get('success'):
+                payment_status = stripe_response.get('status')
+
+                if payment_status == 'succeeded':
+                    # Payment successful
+                    transaction.mark_as_completed(
+                        result_code='0',
+                        result_description='Payment successful'
+                    )
+                    logger.info(f"Stripe transaction {transaction.transaction_reference} marked as completed")
+
+                    # Trigger booking confirmation
+                    process_successful_payment.delay(str(transaction.id))
+
+                elif payment_status in ['canceled', 'failed']:
+                    # Payment failed or cancelled
+                    transaction.mark_as_failed(
+                        result_code='1',
+                        result_description=f'Payment {payment_status}'
+                    )
+                    logger.info(f"Stripe transaction {transaction.transaction_reference} marked as failed")
+
+                # If status is still 'requires_payment_method', 'requires_confirmation', or 'processing', leave as PENDING
+
+        total_checked = mpesa_transactions.count() + stripe_transactions.count()
 
         return {
             'success': True,
-            'checked': pending_transactions.count()
+            'checked': total_checked,
+            'mpesa_count': mpesa_transactions.count(),
+            'stripe_count': stripe_transactions.count()
         }
 
     except Exception as e:
