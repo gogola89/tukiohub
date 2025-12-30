@@ -406,9 +406,10 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
                 code=code
             )
         except PromoCode.DoesNotExist:
+            # Return 200 OK with valid: false - validation completed, code is invalid
             return Response(
                 {'valid': False, 'message': 'Invalid promo code'},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_200_OK
             )
 
         # Check if promo code can be used
@@ -422,9 +423,10 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
             else:
                 message = 'This promo code cannot be used'
 
+            # Return 200 OK with valid: false - validation completed, code cannot be used
             return Response(
                 {'valid': False, 'message': message},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_200_OK
             )
 
         # Check if this user has already used this promo code
@@ -436,9 +438,10 @@ class PromoCodeViewSet(viewsets.ModelViewSet):
             ).first()
 
             if existing_booking:
+                # Return 200 OK with valid: false - validation completed, user already used it
                 return Response(
                     {'valid': False, 'message': 'You have already used this promo code'},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_200_OK
                 )
 
         # Return promo code details
