@@ -553,6 +553,114 @@ class WalletView(generics.GenericAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class WalletCardTopUpView(generics.GenericAPIView):
+    """
+    POST /api/attendees/wallet/card-topup/
+    Initiate Stripe card payment to add money to wallet
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Create Stripe Payment Intent for wallet top-up
+
+        This will:
+        1. Validate the request
+        2. Create Payment Intent with Stripe
+        3. Return client_secret for Stripe Elements
+        4. Stripe webhook will add money to wallet when payment succeeds
+        """
+        from apps.payments.models import Transaction
+        from apps.payments.stripe_service import stripe_service
+        import uuid as uuid_lib
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        attendee = request.user  # Authenticated attendee
+        serializer = AddToWalletSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        amount = serializer.validated_data['amount']
+        description = serializer.validated_data.get('description', 'Wallet top-up')
+
+        # Generate unique transaction reference
+        transaction_reference = f"WT{uuid_lib.uuid4().hex[:8].upper()}"
+
+        # Create pending transaction
+        transaction = Transaction.objects.create(
+            attendee=attendee,
+            event=None,  # No event for wallet top-ups
+            booking=None,  # No booking for wallet top-ups
+            amount=amount,
+            phone_number='',  # Not required for card payments
+            payment_method=Transaction.CARD,
+            transaction_reference=transaction_reference,
+            status=Transaction.PENDING,
+            metadata={
+                'description': description,
+                'transaction_type': 'WALLET_TOPUP',
+                'initiated_by': attendee.email
+            }
+        )
+
+        logger.info(f"Created pending wallet card top-up transaction: {transaction_reference}")
+
+        try:
+            # Create Stripe Payment Intent
+            stripe_response = stripe_service.create_payment_intent(
+                amount=amount,
+                account_reference=transaction_reference,
+                metadata={
+                    'transaction_reference': transaction_reference,
+                    'transaction_type': 'WALLET_TOPUP',
+                    'attendee_id': str(attendee.id),
+                    'attendee_email': attendee.email
+                }
+            )
+
+            if stripe_response.get('success'):
+                # Update transaction with Stripe details
+                transaction.stripe_payment_intent_id = stripe_response.get('payment_intent_id')
+                transaction.save()
+
+                logger.info(f"Stripe Payment Intent created for wallet top-up: {transaction_reference}")
+
+                return Response({
+                    'success': True,
+                    'transaction_reference': transaction_reference,
+                    'client_secret': stripe_response.get('client_secret'),
+                    'payment_intent_id': stripe_response.get('payment_intent_id'),
+                    'publishable_key': stripe_service.publishable_key,
+                    'amount': amount
+                }, status=status.HTTP_200_OK)
+            else:
+                # Stripe initiation failed
+                transaction.status = Transaction.FAILED
+                transaction.result_description = stripe_response.get('error', 'Failed to create Payment Intent')
+                transaction.save()
+
+                logger.error(f"Stripe Payment Intent failed for wallet top-up: {stripe_response.get('error')}")
+
+                return Response({
+                    'success': False,
+                    'error': stripe_response.get('error', 'Failed to initiate card payment')
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Error initiating wallet card top-up: {str(e)}", exc_info=True)
+
+            transaction.status = Transaction.FAILED
+            transaction.result_description = str(e)
+            transaction.save()
+
+            return Response({
+                'error': 'An error occurred while initiating payment. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class AttendeeLogoutView(generics.GenericAPIView):
     """
     POST /api/attendees/logout/
@@ -587,3 +695,49 @@ class AttendeeLogoutView(generics.GenericAPIView):
             return Response({
                 'error': 'Invalid token or token already blacklisted.'
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AttendeeTicketsView(generics.GenericAPIView):
+    """
+    GET /api/attendees/tickets/
+    Get all tickets for the logged-in attendee
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        from apps.bookings.models import Ticket
+        from apps.bookings.serializers import TicketSerializer
+        from apps.users.models import Attendee
+
+        try:
+            user = request.user
+
+            # Check if user is an Attendee instance
+            if not isinstance(user, Attendee):
+                return Response({
+                    'error': 'Only attendees can access tickets.'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            attendee = user
+
+            # Get all tickets for bookings made by this attendee
+            # Match by both attendee FK and email (for cases where FK might not be set)
+            from django.db.models import Q
+            tickets = Ticket.objects.filter(
+                Q(booking__attendee=attendee) | Q(booking__attendee_email=attendee.email)
+            ).select_related(
+                'booking', 'booking__event', 'ticket_type'
+            ).order_by('-created_at')
+
+            serializer = TicketSerializer(tickets, many=True)
+
+            return Response({
+                'tickets': serializer.data,
+                'count': tickets.count()
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error fetching attendee tickets: {str(e)}", exc_info=True)
+            return Response({
+                'error': 'An error occurred while fetching tickets.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

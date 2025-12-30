@@ -70,7 +70,7 @@ class Transaction(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(0)]
     )
-    phone_number = models.CharField(max_length=15)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)  # Optional - only for M-Pesa
     payment_method = models.CharField(
         max_length=20,
         choices=PAYMENT_METHOD_CHOICES,

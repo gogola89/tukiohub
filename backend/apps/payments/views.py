@@ -80,6 +80,21 @@ class InitiateMpesaPaymentAPIView(generics.GenericAPIView):
         try:
             booking = Booking.objects.get(booking_reference=account_reference)
             logger.info(f"Found booking {account_reference} to link to transaction")
+
+            # Check if booking already has a successful transaction
+            existing_successful_transaction = Transaction.objects.filter(
+                booking=booking,
+                status=Transaction.COMPLETED
+            ).first()
+
+            if existing_successful_transaction:
+                logger.warning(f"Booking {account_reference} already has a successful transaction: {existing_successful_transaction.transaction_reference}")
+                return Response({
+                    'success': False,
+                    'error': 'This booking has already been paid',
+                    'transaction_reference': existing_successful_transaction.transaction_reference
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         except Booking.DoesNotExist:
             logger.info(f"No booking found with reference {account_reference}, proceeding without booking link")
 
@@ -340,15 +355,21 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
 
         if user.is_staff or user.is_superuser:
             # Admin sees all transactions
-            return Transaction.objects.all().select_related('event')
+            return Transaction.objects.all().select_related('event', 'booking')
         elif hasattr(user, 'role') and user.role == 'ORGANIZER':
             # Organizer sees transactions for their events
             return Transaction.objects.filter(
                 event__organizer=user
-            ).select_related('event')
+            ).select_related('event', 'booking')
         else:
-            # Regular users see only their transactions (if we add user field later)
-            return Transaction.objects.none()
+            # Attendees see their own transactions (wallet top-ups and bookings)
+            # Include transactions where:
+            # 1. attendee field is set to current user (wallet top-ups)
+            # 2. booking's attendee is the current user (event bookings)
+            from django.db.models import Q
+            return Transaction.objects.filter(
+                Q(attendee=user) | Q(booking__attendee=user)
+            ).select_related('event', 'booking').order_by('-created_at')
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
@@ -400,6 +421,21 @@ class CreateStripePaymentIntentAPIView(generics.GenericAPIView):
         try:
             booking = Booking.objects.get(booking_reference=account_reference)
             logger.info(f"Found booking {account_reference} to link to transaction")
+
+            # Check if booking already has a successful transaction
+            existing_successful_transaction = Transaction.objects.filter(
+                booking=booking,
+                status=Transaction.COMPLETED
+            ).first()
+
+            if existing_successful_transaction:
+                logger.warning(f"Booking {account_reference} already has a successful transaction: {existing_successful_transaction.transaction_reference}")
+                return Response({
+                    'success': False,
+                    'error': 'This booking has already been paid',
+                    'transaction_reference': existing_successful_transaction.transaction_reference
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         except Booking.DoesNotExist:
             logger.info(f"No booking found with reference {account_reference}")
 

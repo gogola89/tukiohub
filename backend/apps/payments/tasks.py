@@ -198,7 +198,17 @@ def check_pending_transactions(self):
                     )
                     logger.info(f"Stripe transaction {transaction.transaction_reference} marked as failed")
 
-                # If status is still 'requires_payment_method', 'requires_confirmation', or 'processing', leave as PENDING
+                elif payment_status == 'requires_payment_method':
+                    # Payment intent created but user never entered card details
+                    # After 15+ minutes, mark as failed
+                    transaction.mark_as_failed(
+                        result_code='1',
+                        result_description='Payment abandoned - no payment method provided'
+                    )
+                    logger.info(f"Stripe transaction {transaction.transaction_reference} marked as failed (abandoned)")
+
+                # If status is 'requires_confirmation' or 'processing', leave as PENDING for now
+                # Will be cleaned up by cleanup task if stuck for too long
 
         total_checked = mpesa_transactions.count() + stripe_transactions.count()
 
@@ -267,8 +277,9 @@ def send_wallet_deposit_email_task(self, attendee_id, amount, new_balance, trans
 @shared_task
 def cleanup_old_pending_transactions():
     """
-    Clean up old pending transactions (older than 24 hours)
-    Mark them as CANCELLED
+    Clean up old pending transactions
+    - Card payments: older than 2 hours -> CANCELLED
+    - M-Pesa payments: older than 24 hours -> CANCELLED
 
     Run daily via Celery Beat
     """
@@ -277,27 +288,49 @@ def cleanup_old_pending_transactions():
     from datetime import timedelta
 
     try:
-        # Get transactions pending for more than 24 hours
+        # Card payments: cancel after 2 hours (faster cleanup for abandoned card payments)
+        two_hours_ago = timezone.now() - timedelta(hours=2)
+
+        old_card_transactions = Transaction.objects.filter(
+            status=Transaction.PENDING,
+            payment_method=Transaction.CARD,
+            created_at__lte=two_hours_ago
+        )
+
+        card_count = old_card_transactions.count()
+
+        old_card_transactions.update(
+            status=Transaction.CANCELLED,
+            result_description='Transaction timeout - cancelled after 2 hours'
+        )
+
+        logger.info(f"Cancelled {card_count} old pending card transactions")
+
+        # M-Pesa payments: cancel after 24 hours (user might take longer to complete)
         twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
 
-        old_transactions = Transaction.objects.filter(
+        old_mpesa_transactions = Transaction.objects.filter(
             status=Transaction.PENDING,
+            payment_method=Transaction.MPESA,
             created_at__lte=twenty_four_hours_ago
         )
 
-        count = old_transactions.count()
+        mpesa_count = old_mpesa_transactions.count()
 
-        # Mark as cancelled
-        old_transactions.update(
+        old_mpesa_transactions.update(
             status=Transaction.CANCELLED,
             result_description='Transaction timeout - cancelled after 24 hours'
         )
 
-        logger.info(f"Cancelled {count} old pending transactions")
+        logger.info(f"Cancelled {mpesa_count} old pending M-Pesa transactions")
+
+        total_count = card_count + mpesa_count
 
         return {
             'success': True,
-            'cancelled': count
+            'cancelled': total_count,
+            'card_cancelled': card_count,
+            'mpesa_cancelled': mpesa_count
         }
 
     except Exception as e:

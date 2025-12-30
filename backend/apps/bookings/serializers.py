@@ -170,12 +170,13 @@ class TicketSerializer(serializers.ModelSerializer):
 
     event = serializers.SerializerMethodField()
     ticket_type = serializers.SerializerMethodField()
+    booking_reference = serializers.CharField(source='booking.booking_reference', read_only=True)
 
     class Meta:
         model = Ticket
         fields = [
             'id', 'ticket_code', 'attendee_name', 'attendee_email',
-            'ticket_type', 'event', 'status',
+            'ticket_type', 'event', 'status', 'booking_reference',
             'checked_in_at', 'checked_in_by', 'qr_code_image',
             'created_at'
         ]
@@ -197,7 +198,8 @@ class TicketSerializer(serializers.ModelSerializer):
             'title': event.title,
             'slug': event.slug,
             'start_datetime': event.start_datetime,
-            'venue_name': event.venue_name
+            'end_datetime': event.end_datetime,
+            'venue': event.venue_name
         }
 
 

@@ -20,7 +20,9 @@ from .views import (
     AttendeeLoginView,
     AttendeeLogoutView,
     AttendeeProfileView,
-    WalletView
+    WalletView,
+    WalletCardTopUpView,
+    AttendeeTicketsView
 )
 from .admin_views import (
     AdminOrganizerListView,
@@ -63,6 +65,8 @@ urlpatterns = [
     path('attendees/logout/', AttendeeLogoutView.as_view(), name='attendee-logout'),
     path('attendees/profile/', AttendeeProfileView.as_view(), name='attendee-profile'),
     path('attendees/wallet/', WalletView.as_view(), name='attendee-wallet'),
+    path('attendees/wallet/card-topup/', WalletCardTopUpView.as_view(), name='attendee-wallet-card-topup'),
+    path('attendees/tickets/', AttendeeTicketsView.as_view(), name='attendee-tickets'),
 
     # Admin Routes
     path('admin/organizers/', AdminOrganizerListView.as_view(), name='admin-organizers-list'),
