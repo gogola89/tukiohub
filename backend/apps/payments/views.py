@@ -508,6 +508,12 @@ class StripeWebhookAPIView(generics.GenericAPIView):
 
     permission_classes = [AllowAny]
 
+    def get_serializer_class(self):
+        """Return None for schema generation"""
+        if getattr(self, 'swagger_fake_view', False):
+            return None
+        return super().get_serializer_class()
+
     def post(self, request):
         """Process Stripe webhook"""
         payload = request.body

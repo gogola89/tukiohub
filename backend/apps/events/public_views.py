@@ -154,6 +154,12 @@ class EventCategoriesAPIView(generics.GenericAPIView):
 
     permission_classes = [AllowAny]
 
+    def get_serializer_class(self):
+        """Return None for schema generation"""
+        if getattr(self, 'swagger_fake_view', False):
+            return None
+        return super().get_serializer_class()
+
     def get(self, request):
         """Return list of event categories"""
         # Handle Swagger schema generation

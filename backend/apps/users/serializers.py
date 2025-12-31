@@ -499,3 +499,19 @@ class OrganizerDashboardSerializer(serializers.Serializer):
     verification_status = serializers.CharField(help_text="Organizer verification status")
     email_verified = serializers.BooleanField(help_text="Email verification status")
     profile_complete = serializers.BooleanField(help_text="Profile completion status")
+
+
+class LogoutSerializer(serializers.Serializer):
+    """Serializer for logout request"""
+    refresh = serializers.CharField(required=True, help_text="Refresh token to blacklist")
+
+
+class WalletCardTopUpSerializer(serializers.Serializer):
+    """Serializer for wallet card top-up request"""
+    amount = serializers.DecimalField(
+        required=True,
+        max_digits=10,
+        decimal_places=2,
+        min_value=1,
+        help_text="Amount to add to wallet (minimum 1 KES)"
+    )

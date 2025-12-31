@@ -18,7 +18,11 @@ from .serializers import (
     EmailVerificationSerializer,
     ProfileImageUploadSerializer,
     DocumentUploadSerializer,
-    OrganizerDashboardSerializer
+    OrganizerDashboardSerializer,
+    LogoutSerializer,
+    WalletCardTopUpSerializer,
+    WalletTransactionSerializer,
+    AddToWalletSerializer
 )
 from .models import PasswordReset, EmailVerification
 from .services import EmailService, generate_verification_token, verify_token
@@ -297,6 +301,7 @@ class UserLogoutView(generics.GenericAPIView):
     Logout by blacklisting the refresh token
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = LogoutSerializer
 
     def post(self, request, *args, **kwargs):
         try:
@@ -438,6 +443,7 @@ class WalletView(generics.GenericAPIView):
     View and manage attendee wallet
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = AddToWalletSerializer
 
     def get(self, request):
         """Get wallet balance and recent transactions"""
@@ -559,6 +565,7 @@ class WalletCardTopUpView(generics.GenericAPIView):
     Initiate Stripe card payment to add money to wallet
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = WalletCardTopUpSerializer
 
     def post(self, request):
         """
@@ -667,6 +674,7 @@ class AttendeeLogoutView(generics.GenericAPIView):
     Logout attendee by blacklisting the refresh token
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = LogoutSerializer
 
     def post(self, request, *args, **kwargs):
         try:

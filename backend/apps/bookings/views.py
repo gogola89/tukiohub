@@ -141,6 +141,12 @@ class ConfirmWalletPaymentAPIView(generics.GenericAPIView):
 
     permission_classes = [IsAuthenticated]
 
+    def get_serializer_class(self):
+        """Return None for schema generation"""
+        if getattr(self, 'swagger_fake_view', False):
+            return None
+        return super().get_serializer_class()
+
     def post(self, request, booking_reference):
         """Confirm wallet payment and complete booking"""
         try:

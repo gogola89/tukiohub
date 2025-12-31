@@ -1987,6 +1987,40 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Create Stripe Payment Intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"event_id\": \"{{event_id}}\",\n    \"amount\": 1000,\n    \"account_reference\": \"{{booking_reference}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/payments/stripe/create-intent/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "stripe",
+                "create-intent",
+                ""
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -2481,6 +2515,68 @@
               "path": [
                 "attendees",
                 "wallet",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Wallet Card Top-Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"amount\": 500.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/attendees/wallet/card-topup/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "attendees",
+                "wallet",
+                "card-topup",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Attendee Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/attendees/tickets/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "attendees",
+                "tickets",
                 ""
               ]
             }
