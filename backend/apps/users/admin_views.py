@@ -6,7 +6,8 @@ from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum
+from django.utils import timezone
 from .models import Attendee
 from .serializers import (
     AdminOrganizerListSerializer,
@@ -19,6 +20,8 @@ from .serializers import (
     AdminDashboardSerializer,
     AdminAnalyticsSerializer
 )
+from apps.events.models import Event
+from apps.bookings.models import Booking
 from .permissions import IsAdmin
 from .services import EmailService
 import logging
@@ -33,7 +36,6 @@ class AdminOrganizerListView(generics.ListAPIView):
     GET /api/admin/organizers/
     List all organizers (admin only)
     """
-    serializer_class = AdminOrganizerListSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
@@ -62,19 +64,77 @@ class AdminOrganizerListView(generics.ListAPIView):
 
         return queryset
 
+    def get_serializer_class(self):
+        return AdminOrganizerListSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to return organizers in the format expected by the frontend
+        """
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+
+        # Transform the data to match the expected frontend format
+        organizers_data = []
+        for item in serializer.data:
+            organizer_data = {
+                'id': item['id'],
+                'email': item['email'],
+                'company_name': item['company_name'],
+                'phone_number': item['phone_number'],
+                'verification_status': item['verification_status'],
+                'verification_documents': item.get('verification_documents', []),
+                'created_at': item['created_at'],
+                'updated_at': item['updated_at'],
+            }
+            organizers_data.append(organizer_data)
+
+        return Response(organizers_data)
+
 
 class AdminOrganizerDetailView(generics.RetrieveUpdateAPIView):
     """
     GET/PATCH /api/admin/organizers/<id>/
     Get or update organizer details (admin only)
     """
-    queryset = User.objects.filter(role=User.ORGANIZER)
     permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_queryset(self):
+        """
+        Get organizer with events
+        """
+        from apps.events.models import Event
+        return User.objects.filter(
+            role=User.ORGANIZER
+        ).prefetch_related(
+            'events'
+        )
 
     def get_serializer_class(self):
         if self.request.method == 'PATCH':
             return AdminUpdateOrganizerSerializer
         return AdminOrganizerDetailSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Override retrieve to include events data
+        """
+        instance = self.get_object()
+
+        # Serialize organizer details
+        organizer_serializer = self.get_serializer(instance)
+
+        # Get events for this organizer
+        from apps.events.models import Event
+        from apps.events.serializers import EventListSerializer
+        events = Event.objects.filter(organizer=instance)
+        events_serializer = EventListSerializer(events, many=True, context={'request': request})
+
+        # Combine data
+        data = organizer_serializer.data
+        data['events'] = events_serializer.data
+
+        return Response(data)
 
 
 class OrganizerApprovalView(generics.GenericAPIView):
@@ -149,49 +209,33 @@ class AdminDashboardView(generics.GenericAPIView):
             verification_status=User.REJECTED
         ).count()
 
-        # Get user statistics
-        total_users = User.objects.count()
-        verified_emails = User.objects.filter(email_verified=True).count()
-        active_users = User.objects.filter(is_active=True).count()
-
-        # Recent organizer applications (last 7 days)
-        from datetime import timedelta
-        from django.utils import timezone
-        week_ago = timezone.now() - timedelta(days=7)
-        recent_applications = User.objects.filter(
-            role=User.ORGANIZER,
-            created_at__gte=week_ago
+        # Get event statistics
+        total_events = Event.objects.count()
+        published_events = Event.objects.filter(status=Event.PUBLISHED).count()
+        upcoming_events = Event.objects.filter(
+            status=Event.PUBLISHED,
+            start_datetime__gte=timezone.now()
         ).count()
 
+        # Get booking and revenue statistics
+        from django.db.models import Sum
+        total_revenue = Booking.objects.filter(
+            status=Booking.STATUS_CONFIRMED
+        ).aggregate(total=Sum('final_amount'))['total'] or 0
+        total_bookings = Booking.objects.filter(
+            status=Booking.STATUS_CONFIRMED
+        ).count()
+        total_tickets_sold = Booking.objects.filter(
+            status=Booking.STATUS_CONFIRMED
+        ).aggregate(total=Sum('items__quantity'))['total'] or 0
+
+        # Return data in the format expected by the frontend
         dashboard_data = {
-            'organizer_stats': {
-                'total': total_organizers,
-                'pending': pending_organizers,
-                'approved': approved_organizers,
-                'rejected': rejected_organizers,
-                'recent_applications': recent_applications
-            },
-            'user_stats': {
-                'total_users': total_users,
-                'verified_emails': verified_emails,
-                'active_users': active_users
-            },
-            'platform_stats': {
-                'total_events': 0,  # Will be implemented in Sprint 5
-                'total_bookings': 0,  # Will be implemented in later sprints
-                'total_revenue': 0  # Will be implemented in later sprints
-            }
+            'total_organizers': total_organizers,
+            'pending_organizers': pending_organizers,
+            'total_events': total_events,
+            'total_revenue': float(total_revenue),
         }
-
-        # Get recent pending organizers
-        recent_pending = User.objects.filter(
-            role=User.ORGANIZER,
-            verification_status=User.PENDING
-        ).order_by('-created_at')[:5]
-
-        dashboard_data['recent_pending_organizers'] = AdminOrganizerListSerializer(
-            recent_pending, many=True
-        ).data
 
         return Response(dashboard_data, status=status.HTTP_200_OK)
 
@@ -208,55 +252,28 @@ class AdminAnalyticsView(generics.GenericAPIView):
     def get(self, request):
         from datetime import timedelta
         from django.utils import timezone
-        from django.db.models.functions import TruncDate
-        from django.db.models import Count
+        from django.db.models import Sum
 
-        # Get date range (default last 30 days)
-        days = int(request.query_params.get('days', 30))
-        start_date = timezone.now() - timedelta(days=days)
-
-        # Organizer registrations over time
-        organizer_registrations = User.objects.filter(
-            role=User.ORGANIZER,
-            created_at__gte=start_date
-        ).annotate(
-            date=TruncDate('created_at')
-        ).values('date').annotate(
-            count=Count('id')
-        ).order_by('date')
-
-        # Approval rate
-        total_processed = User.objects.filter(
-            role=User.ORGANIZER,
-            verification_status__in=[User.APPROVED, User.REJECTED]
-        ).count()
-
-        approved_count = User.objects.filter(
-            role=User.ORGANIZER,
-            verification_status=User.APPROVED
-        ).count()
-
-        approval_rate = (approved_count / total_processed * 100) if total_processed > 0 else 0
-
-        # Email verification rate
+        # Get organizer statistics
         total_organizers = User.objects.filter(role=User.ORGANIZER).count()
-        verified_emails_count = User.objects.filter(
-            role=User.ORGANIZER,
-            email_verified=True
-        ).count()
 
-        email_verification_rate = (verified_emails_count / total_organizers * 100) if total_organizers > 0 else 0
+        # Get event statistics
+        total_events = Event.objects.count()
 
+        # Get booking and revenue statistics
+        total_revenue = Booking.objects.filter(
+            status=Booking.STATUS_CONFIRMED
+        ).aggregate(total=Sum('final_amount'))['total'] or 0
+        total_tickets_sold = Booking.objects.filter(
+            status=Booking.STATUS_CONFIRMED
+        ).aggregate(total=Sum('items__quantity'))['total'] or 0
+
+        # Return data in the format expected by the frontend
         analytics_data = {
-            'time_period': f'Last {days} days',
-            'organizer_registrations': list(organizer_registrations),
-            'approval_rate': round(approval_rate, 2),
-            'email_verification_rate': round(email_verification_rate, 2),
-            'metrics': {
-                'total_processed': total_processed,
-                'approved_count': approved_count,
-                'rejected_count': total_processed - approved_count
-            }
+            'total_organizers': total_organizers,
+            'total_events': total_events,
+            'total_revenue': float(total_revenue),
+            'total_tickets_sold': total_tickets_sold or 0,
         }
 
         return Response(analytics_data, status=status.HTTP_200_OK)
@@ -313,3 +330,88 @@ class AdminAttendeeDetailView(generics.RetrieveUpdateAPIView):
         if self.request.method == 'PATCH':
             return AdminUpdateAttendeeSerializer
         return AdminAttendeeDetailSerializer
+
+
+class AdminEventsListView(generics.ListAPIView):
+    """
+    GET /api/admin/events/
+    List all events with analytics data (admin only)
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_queryset(self):
+        """
+        Get all events with analytics data
+        """
+        from django.db.models import Count, Sum, Q
+
+        queryset = Event.objects.all().select_related(
+            'organizer'
+        ).prefetch_related(
+            'ticket_types'
+        ).annotate(
+            total_bookings=Count(
+                'bookings',
+                filter=Q(bookings__status=Booking.STATUS_CONFIRMED)
+            ),
+            total_revenue=Sum(
+                'bookings__final_amount',
+                filter=Q(bookings__status=Booking.STATUS_CONFIRMED)
+            )
+        ).order_by('-created_at')
+
+        # Filter by event status
+        status = self.request.query_params.get('status', None)
+        if status:
+            queryset = queryset.filter(status=status.upper())
+
+        # Filter by organizer
+        organizer_id = self.request.query_params.get('organizer', None)
+        if organizer_id:
+            queryset = queryset.filter(organizer_id=organizer_id)
+
+        # Search by title or venue
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(venue_name__icontains=search)
+            )
+
+        return queryset
+
+    def get_serializer_class(self):
+        from apps.events.serializers import EventListSerializer
+        return EventListSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to return events with additional analytics data
+        """
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+
+        # Calculate platform-wide event statistics
+        total_events = Event.objects.count()
+        published_events = Event.objects.filter(status=Event.PUBLISHED).count()
+        upcoming_events = Event.objects.filter(
+            status=Event.PUBLISHED,
+            start_datetime__gte=timezone.now()
+        ).count()
+        total_revenue = Booking.objects.filter(
+            status=Booking.STATUS_CONFIRMED
+        ).aggregate(total=Sum('final_amount'))['total'] or 0
+        total_bookings = Booking.objects.filter(
+            status=Booking.STATUS_CONFIRMED
+        ).count()
+
+        return Response({
+            'count': queryset.count(),
+            'results': serializer.data,
+            'analytics': {
+                'total_events': total_events,
+                'published_events': published_events,
+                'upcoming_events': upcoming_events,
+                'total_revenue': float(total_revenue),
+                'total_bookings': total_bookings
+            }
+        })

@@ -31,7 +31,8 @@ from .admin_views import (
     AdminAttendeeDetailView,
     OrganizerApprovalView,
     AdminDashboardView,
-    AdminAnalyticsView
+    AdminAnalyticsView,
+    AdminEventsListView
 )
 
 app_name = 'users'
@@ -76,4 +77,5 @@ urlpatterns = [
     path('admin/attendees/<uuid:pk>/', AdminAttendeeDetailView.as_view(), name='admin-attendee-detail'),
     path('admin/dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
     path('admin/analytics/', AdminAnalyticsView.as_view(), name='admin-analytics'),
+    path('admin/events/', AdminEventsListView.as_view(), name='admin-events-list'),
 ]
