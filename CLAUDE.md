@@ -1,881 +1,155 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# TukioHub - Event Management Platform
 
 ## Project Overview
 
-This is **TukioHub** - a comprehensive event management platform designed for the Kenyan market. TukioHub enables event organizers to advertise events, manage tickets, and process payments through M-Pesa and card payments. The system features a guest checkout flow (no attendee registration required), QR code-based ticket verification, and SMS/email confirmations.
+TukioHub is a full-stack event management platform targeting the Kenyan market. It supports event creation, ticket sales (M-Pesa + Stripe), QR-code ticketing, analytics dashboards, and multi-role authentication (organizers, attendees, admins).
 
-**Key Differentiators:**
-- M-Pesa STK Push integration for instant payments
-- No attendee registration required
-- Multi-tier ticketing (VVIP, VIP, Regular, Early Bird)
-- QR code ticket generation and verification
-- SMS and email delivery system
-
-## Technology Stack
-
-### Backend: Django (Python)
-- **Framework**: Django 5.0 with Django REST Framework
-- **Authentication**: JWT (djangorestframework-simplejwt)
-- **Database**: PostgreSQL
-- **Cache**: Redis (django-redis)
-- **Async Tasks**: Celery with Redis broker
-- **Real-time**: Django Channels for WebSocket support
-- **File Storage**: django-storages with AWS S3
-
-### Frontend: React/Next.js
-- **Framework**: Next.js 14 with TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: Shadcn/ui
-- **State Management**: Context API or Zustand
-- **Forms**: React Hook Form
-
-### Payment Integration
-- **M-Pesa**: Safaricom Daraja API (STK Push)
-- **Card Payments**: Stripe or Flutterwave
-
-### Communication
-- **Email**: SendGrid or AWS SES
-- **SMS**: Africa's Talking
-
-## Project Structure
+## Repository Structure
 
 ```
-eventms/
-├── backend/                    # Django backend
-│   ├── config/                 # Django settings (split: base, dev, prod)
-│   ├── apps/
-│   │   ├── users/              # Custom user model, authentication
-│   │   ├── events/             # Event management, categories
-│   │   ├── bookings/           # Booking system, tickets
-│   │   ├── payments/           # M-Pesa, Stripe integration
-│   │   ├── analytics/          # Reporting and analytics
-│   │   └── notifications/      # Email/SMS services
-│   └── requirements/           # Split requirements (base, dev, prod)
-└── frontend/                   # Next.js frontend
-    ├── app/                    # Next.js app router
-    ├── components/             # Reusable components
-    └── lib/                    # API client, utilities
+tukiohub/
+├── backend/          # Django REST API
+├── frontend/         # Next.js web app
+├── docker-compose.yml
+└── CLAUDE.md
 ```
 
-## Common Development Commands
+## Tech Stack
 
-### Backend (Django)
+### Backend (`backend/`)
+- **Framework:** Django 5.0.1 + Django REST Framework 3.16.1
+- **Database:** PostgreSQL 14+
+- **Cache/Broker:** Redis 5+
+- **Task Queue:** Celery 5.3.4 + Celery Beat
+- **Auth:** JWT (djangorestframework-simplejwt) with dual user model (User + Attendee)
+- **Payments:** M-Pesa Daraja API, Stripe
+- **Email/SMS:** SendGrid, Africa's Talking
+- **Docs:** Swagger/OpenAPI via drf-yasg at `/swagger/`
+- **Python:** 3.12+
 
+### Frontend (`frontend/`)
+- **Framework:** Next.js 16.1.0 (App Router) + React 19
+- **Language:** TypeScript (strict)
+- **Styling:** Tailwind CSS 4 + shadcn/ui (New York style) + Radix UI
+- **State:** Zustand 5 (persisted stores) + TanStack React Query 5
+- **Forms:** React Hook Form 7 + Zod 4
+- **Payments:** Stripe Elements, M-Pesa STK Push
+- **Node:** 18+
+
+## Architecture
+
+### Backend Apps (`backend/apps/`)
+- `users/` — Custom User model (organizers/admins) + Attendee model, JWT auth, wallet
+- `events/` — Event CRUD, ticket types, promo codes, add-ons, public browsing
+- `bookings/` — Booking flow, ticket generation (QR + PDF), check-in
+- `payments/` — M-Pesa STK push, Stripe intents, transaction tracking
+- `analytics/` — Dashboard stats, revenue timelines, demographics, CSV exports
+- `notifications/` — SendGrid email + Africa's Talking SMS services
+
+### Backend Config (`backend/config/`)
+- `settings/base.py` — Shared settings
+- `settings/development.py` — Dev overrides (DEBUG=True, CORS open, MailDev)
+- `settings/production.py` — Production hardening (SSL, HSTS, Sentry)
+- `urls.py` — Root URL routing
+- `celery.py` — Celery app configuration
+
+### Frontend Structure (`frontend/src/`)
+- `app/` — Next.js App Router pages (route groups: auth, public, organizer, admin, attendee)
+- `components/` — 66 React components (ui/, layout/, auth/, events/, booking/, payment/, dashboard/, admin/, wallet/)
+- `lib/api/client.ts` — Axios instance with JWT interceptors and auto-refresh
+- `lib/api/endpoints/` — API endpoint modules (auth, events, bookings, payments, tickets, analytics, attendees, admin)
+- `lib/hooks/` — Custom hooks (useAuth, useEvents, useBooking, usePayment, useStripePayment)
+- `lib/store/` — Zustand stores (authStore, attendeeAuthStore, cartStore)
+- `lib/validations/` — Zod schemas
+- `types/` — TypeScript interfaces
+
+## Key Commands
+
+### Backend
 ```bash
-# Setup virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
+cd backend
 pip install -r requirements/development.txt
-
-# Database operations
-python manage.py makemigrations
 python manage.py migrate
-python manage.py createsuperuser
-
-# Run development server
-python manage.py runserver
-
-# Run with specific settings
-python manage.py runserver --settings=config.settings.development
-
-# Django shell (for database queries)
-python manage.py shell
-python manage.py shell_plus  # Enhanced shell (requires django-extensions)
-
-# Database operations
-python manage.py dbshell
-
-# Create database backup
-pg_dump -U event_user event_management_db > backup.sql
-
-# Restore database
-psql -U event_user event_management_db < backup.sql
-```
-
-### Testing
-
-```bash
-# Run all tests with pytest
-pytest
-
-# Run with coverage
-pytest --cov=apps --cov-report=html
-
-# Run specific test file
-pytest apps/bookings/tests/test_services.py
-
-# Run specific test class
-pytest apps/users/tests/test_auth.py::TestUserAuthentication
-
-# Run only unit tests
-pytest -m unit
-
-# Run only integration tests
-pytest -m integration
-
-# Verbose output
-pytest -v
-```
-
-### Celery (Async Tasks)
-
-```bash
-# Start Celery worker
-celery -A config worker -l info
-
-# Start Celery Beat (scheduled tasks)
-celery -A config beat -l info
-
-# Monitor Celery tasks
-celery -A config inspect active
+python manage.py runserver                    # API on :8000
+celery -A config worker -l info               # Background tasks
+celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
 ```
 
 ### Frontend
-
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Run tests
-npm run test
-
-# Run E2E tests
-npm run test:e2e
+npm run dev       # Dev server on :3000
+npm run build     # Production build
+npm run start     # Production server on :3000
 ```
 
-## Key Architecture Components
-
-### Authentication Flow
-- Organizers and admins register with email verification
-- JWT token-based authentication using djangorestframework-simplejwt
-- Access token lifetime: 1 hour
-- Refresh token lifetime: 7 days
-- Attendees do NOT need accounts (guest checkout)
-
-### Booking Workflow
-1. User selects tickets on frontend
-2. Backend creates PENDING booking and locks inventory (using `select_for_update()`)
-3. 5-minute timeout set (Celery task)
-4. User proceeds to M-Pesa or card payment
-5. On successful payment:
-   - Update booking status to CONFIRMED
-   - Generate individual tickets with QR codes
-   - Send confirmation email/SMS
-6. On timeout: Release inventory and mark booking EXPIRED
-
-### Payment Integration (M-Pesa)
-- OAuth token generation with Redis caching (expires in 55 minutes)
-- STK Push flow:
-  1. Initiate STK Push with phone number, amount, reference
-  2. User enters M-Pesa PIN on phone
-  3. Daraja callback updates transaction status
-  4. Celery task processes confirmation and triggers ticket generation
-- Phone number format: 254XXXXXXXXX (Kenyan format)
-- All M-Pesa operations in `payments/mpesa_service.py`
-
-### Ticket Generation
-- Uses `qrcode` library for QR code generation
-- Uses `reportlab` for PDF generation
-- Each ticket includes:
-  - Event details (name, date, time, venue)
-  - Attendee name
-  - Ticket type
-  - Large QR code (centered)
-  - Booking reference
-- QR code stores unique ticket_code for verification
-- Tickets delivered via SendGrid (email) and Africa's Talking (SMS)
-
-### Database Query Optimization
-Django ORM best practices:
-```python
-# Use select_related for foreign keys
-events = Event.objects.select_related('organizer').all()
-
-# Use prefetch_related for reverse FK and M2M
-events = Event.objects.prefetch_related('ticket_types').all()
-
-# Use only() to fetch specific fields
-events = Event.objects.only('title', 'start_datetime').all()
-
-# Use defer() to exclude fields
-events = Event.objects.defer('description').all()
-
-# Lock inventory for concurrent bookings
-ticket_type = TicketType.objects.select_for_update().get(id=ticket_id)
+### Docker (full stack)
+```bash
+docker compose up --build        # All services
+docker compose up -d             # Detached mode
+docker compose down              # Stop all
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py createsuperuser
 ```
-
-### Settings Management
-- `config/settings/base.py` - Common settings
-- `config/settings/development.py` - Dev overrides
-- `config/settings/production.py` - Production overrides
-- Use `--settings=config.settings.development` to specify
-
-## Critical Business Logic
-
-### Inventory Management
-- Use database transactions (`@transaction.atomic`) for all booking operations
-- Use `select_for_update()` to prevent race conditions and overselling
-- Automatic inventory release on booking timeout (5 minutes)
-- Track `quantity_sold` on TicketType model
-
-### Promo Code Application
-- Validate: is_active, not expired, usage_limit not exceeded
-- Two discount types: PERCENTAGE, FIXED
-- Apply discount using `apply_discount(amount)` method
-- Increment `times_used` after successful booking
-
-### Event Status Workflow
-- DRAFT: Being created by organizer
-- PUBLISHED: Visible to public
-- CANCELLED: Event cancelled by organizer
-- COMPLETED: Event has ended
-
-### Payment Status Tracking
-Transaction statuses:
-- PENDING: Payment initiated
-- COMPLETED: Payment successful
-- FAILED: Payment failed or declined
-- CANCELLED: Payment cancelled by user
-
-## Important Implementation Notes
-
-### Security Considerations
-- Never store card details (PCI DSS compliance)
-- Verify all webhook signatures (M-Pesa, Stripe)
-- Use HTTPS only in production
-- Implement rate limiting on public APIs
-- Validate phone numbers (Kenyan format: 254XXXXXXXXX)
-- Validate email formats
-
-### Webhook Handling
-- M-Pesa callback: No authentication (validate using request parameters)
-- Stripe webhook: Verify signature using `stripe.Webhook.construct_event()`
-- Process webhooks asynchronously using Celery
-- Implement idempotency to prevent duplicate processing
-
-### Error Handling Scenarios
-**M-Pesa:**
-- Timeout (user doesn't enter PIN): Mark transaction FAILED after timeout
-- Cancelled by user: Update status to CANCELLED
-- Insufficient funds: Handle result_code from callback
-- Invalid phone number: Validate before initiating STK Push
-
-**Booking:**
-- Sold out tickets: Validate availability before creating booking
-- Expired promo code: Validate in serializer
-- Past event: Prevent booking for past events
-- Concurrent bookings: Use database locking
-
-### Performance Optimization
-- Cache frequently accessed data (event lists, categories) in Redis
-- Use pagination for all list endpoints
-- Implement lazy loading for images
-- Use CDN for static assets
-- Database indexes on: slug, category+start_datetime, booking_reference, ticket_code
-
-## Key Models
-
-**User** (users/models.py)
-- Custom user model extending AbstractUser
-- Fields: email (unique), role (ORGANIZER/ADMIN), company_name, phone_number, verification_status
-
-**Event** (events/models.py)
-- UUID primary key, slug (unique, auto-generated)
-- Venue with latitude/longitude (geocoded)
-- Status workflow: DRAFT → PUBLISHED → COMPLETED/CANCELLED
-- Properties: `is_upcoming()`, `is_sold_out()`, `available_tickets()`
-
-**TicketType** (events/models.py)
-- Multiple types per event (VVIP, VIP, REGULAR, etc.)
-- Quantity tracking: quantity_available, quantity_sold
-- Sales date range: sales_start_date, sales_end_date
-
-**Booking** (bookings/models.py)
-- UUID primary key, unique booking_reference
-- Guest checkout: attendee_name, attendee_email, attendee_phone
-- Payment tracking: payment_status, payment_method, transaction_id
-
-**Ticket** (bookings/models.py)
-- Individual tickets generated from bookings
-- Unique ticket_code for QR verification
-- Status: ACTIVE, USED, CANCELLED, TRANSFERRED
-- checked_in_at timestamp for entry tracking
-
-**Transaction** (payments/models.py)
-- Payment tracking: amount, payment_method, mpesa_receipt_number
-- Status: PENDING, COMPLETED, FAILED, CANCELLED
-- Foreign key to Booking (can be null initially)
-
-## Django Admin Panel
-
-**Access**: `http://localhost:8000/admin/` or via ngrok URL
-
-**Complete Guide**: See `backend/ADMIN_GUIDE.md` for comprehensive documentation
-
-### Available Management Interfaces
-
-All models are registered in Django Admin with full CRUD capabilities:
-
-**Users Management** (`apps/users/admin.py`):
-- View and manage all users (organizers, admins)
-- Approve/reject organizers
-- Manage verification status
-- View verification documents
-- Control access permissions
-
-**Events Management** (`apps/events/admin.py`):
-- Comprehensive event management with inline editing
-- Ticket types, promo codes, add-ons, and images managed inline
-- Real-time statistics (tickets sold, availability, pricing)
-- Featured image previews
-- Filter by status, category, date
-- Search across title, description, venue, organizer
-
-**Payments Management** (`apps/payments/admin.py`):
-- View all transactions (M-Pesa and card)
-- Track payment status and receipts
-- Monitor M-Pesa callbacks
-- Search by transaction reference, phone, event
-- Read-only for audit trail
-
-### Key Admin Features
-
-**Inline Editing**:
-- Edit related models without leaving parent page
-- Add multiple ticket types to event at once
-- Manage promo codes and add-ons inline
-- Upload multiple event images
-
-**Advanced Filtering**:
-- Multi-field filters
-- Date range filtering
-- Status-based filtering
-- Category and role filtering
-
-**Search Capabilities**:
-- Full-text search across multiple fields
-- Case-insensitive matching
-- Partial match support
-
-**Optimized Performance**:
-- Queries optimized with `select_related()` and `prefetch_related()`
-- Pagination for large datasets
-- Efficient database access
-
-### Quick Admin Tasks
-
-**Create Event**:
-1. Events > Add Event
-2. Fill basic info, upload image
-3. Save and continue editing
-4. Add ticket types inline
-5. Publish when ready
-
-**Approve Organizer**:
-1. Users > Click organizer
-2. Change verification_status to "APPROVED"
-3. Save
-
-**Monitor Payments**:
-1. Payments > Transactions
-2. Filter by status/date
-3. View M-Pesa receipts and callbacks
-
-**Create Promo Code**:
-1. Events > Promo Codes > Add
-2. Enter code, discount type/value
-3. Set validity period
-4. Save
 
 ## Environment Variables
 
-Key environment variables (see `.env.example`):
-- Database: `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`
-- Redis: `REDIS_URL`
-- M-Pesa: `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_PASSKEY`, `MPESA_SHORTCODE`, `MPESA_CALLBACK_URL`
-- Email: `SENDGRID_API_KEY`, `DEFAULT_FROM_EMAIL`
-- SMS: `AFRICASTALKING_USERNAME`, `AFRICASTALKING_API_KEY`
-- Storage: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_STORAGE_BUCKET_NAME`
-- Celery: `CELERY_BROKER_URL`
+### Backend (`backend/.env`)
+Copy from `backend/.env.example`. Key variables:
+- `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`
+- `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`
+- `REDIS_URL`, `CELERY_BROKER_URL`
+- `MPESA_*` — M-Pesa Daraja credentials
+- `STRIPE_*` — Stripe keys
+- `SENDGRID_API_KEY`, `AFRICASTALKING_*`
+- `CORS_ALLOWED_ORIGINS`
 
-## Troubleshooting
+### Frontend (`frontend/.env.local`)
+- `NEXT_PUBLIC_API_URL` — Backend API base URL (default: `http://localhost:8000/api`)
 
-### M-Pesa STK Push fails
-- Verify shortcode and passkey are correct
-- Check timestamp format (YYYYMMDDHHmmss)
-- Ensure callback URL is publicly accessible (use ngrok for local dev)
-- Verify phone number format (254XXXXXXXXX)
+## API Endpoints (80+)
 
-### Database connection errors
-- Check PostgreSQL is running: `sudo systemctl status postgresql`
-- Verify credentials in `.env`
-- Ensure database user has correct permissions
+Key endpoint groups:
+- `/api/auth/` — Organizer/admin auth (register, login, refresh, me)
+- `/api/attendees/` — Attendee auth + wallet + tickets
+- `/api/events/` — Organizer event CRUD
+- `/api/public/events/` — Public event browsing (no auth)
+- `/api/bookings/` — Booking creation, wallet payment, ticket operations
+- `/api/payments/` — M-Pesa STK push, Stripe intents, webhooks
+- `/api/analytics/` — Dashboard, revenue, demographics, CSV exports
+- `/api/admin/` — Admin organizer/event/attendee management
+- `/swagger/` — Interactive API docs
 
-### Celery tasks not running
-- Check Celery worker is running: `celery -A config worker -l info`
-- Check Redis connection: `redis-cli ping`
-- View active tasks: `celery -A config inspect active`
+## Authentication
 
-### Email/SMS not sending
-- Verify API keys in environment variables
-- Check SendGrid/Africa's Talking account status
-- Review Celery logs for failed tasks
-- Check email templates are correctly formatted
+Dual-model JWT auth via `DualUserJWTAuthentication`:
+- **Organizers/Admins:** `User` model (email-based login)
+- **Attendees:** `Attendee` model (separate auth flow)
+- JWT `user_type` claim distinguishes token type
+- Access token: 1 hour, Refresh token: 7 days
+- Frontend stores tokens in Zustand (persisted to localStorage)
 
-## Deployment
+## Conventions
 
-### Production Checklist
+- Backend uses Django conventions: snake_case, class-based views, model-serializer-view pattern
+- Frontend uses Next.js App Router conventions: route groups with `()`, `page.tsx` files
+- API responses follow DRF pagination: `{count, next, previous, results}`
+- UUIDs for all primary keys
+- Environment config via `python-decouple` (backend) and `NEXT_PUBLIC_` prefix (frontend)
+- Commit messages: `type: description` (fix, feat, docs, refactor)
+
+## Testing
+
 ```bash
-# 1. Collect static files
-python manage.py collectstatic --noinput
-
-# 2. Run migrations
-python manage.py migrate --settings=config.settings.production
-
-# 3. Create superuser
-python manage.py createsuperuser --settings=config.settings.production
-
-# 4. Run security checks
-python manage.py check --deploy --settings=config.settings.production
-
-# 5. Test production settings locally
-python manage.py runserver --settings=config.settings.production
+cd backend
+pytest                           # Run all tests
+pytest apps/users/tests/         # Run specific app tests
+pytest -v --tb=short             # Verbose with short tracebacks
 ```
 
-### Server Management (systemd services)
-```bash
-# Check Django service status
-sudo systemctl status event-api
-
-# Restart Django service
-sudo systemctl restart event-api
-
-# Check Celery worker
-sudo systemctl status celery
-
-# Restart Celery
-sudo systemctl restart celery
-
-# View Django logs
-sudo journalctl -u event-api -f
-
-# View Celery logs
-sudo journalctl -u celery -f
-```
-
-## API Documentation and Testing
-
-### Swagger/OpenAPI Documentation
-
-**Location**: http://localhost:8000/swagger/
-
-The project uses `drf-yasg` for automatic API documentation. However, there's a **known incompatibility** between `drf-yasg` and `drf-nested-routers`:
-
-**Issue**: Nested routes (e.g., `/api/events/{id}/tickets/`) cause `AssertionError: duplicate Parameters found` in Swagger schema generation.
-
-**Solution Implemented** (in `config/urls.py`):
-- Created `CustomSchemaGenerator` that filters out nested route endpoints from Swagger
-- Added exception handling to gracefully skip endpoints with duplicate parameters
-- Nested routes remain **fully functional** in the API, just excluded from Swagger docs
-
-**Excluded from Swagger** (but working in API):
-- `/api/events/{id}/tickets/` - Ticket type management
-- `/api/events/{id}/promo-codes/` - Promo code management
-- `/api/events/{id}/addons/` - Event add-on management
-
-**Important**: If you add new nested routes in the future, they will automatically be excluded from Swagger but will work perfectly via the API.
-
-### Postman Collection
-
-**Location**: `backend/docs/TukioHub_API.postman_collection.json`
-
-A comprehensive Postman collection is maintained with **all API endpoints** including nested routes that Swagger cannot document.
-
-**Features**:
-- 45+ requests organized into 6 folders
-- Auto-saves tokens and IDs using test scripts
-- Pre-configured authentication
-- Ready-to-use examples
-
-**Import Instructions**:
-1. Open Postman
-2. Click **Import**
-3. Select `backend/docs/TukioHub_API.postman_collection.json`
-
-**CRITICAL**: When adding new API endpoints or modifying existing ones, **ALWAYS update the Postman collection** to reflect the changes. See `backend/docs/POSTMAN_GUIDE.md` for usage instructions.
-
-**Collection Structure**:
-- Authentication (4 requests)
-- Organizer - Events (11 requests)
-- Organizer - Ticket Types (7 requests)
-- Organizer - Promo Codes (6 requests)
-- Organizer - Event Add-ons (5 requests)
-- Public - Event Discovery (12 requests)
-
-## Development Workflow
-
-1. Create feature branch: `git checkout -b feature/ticket-generation`
-2. Implement feature with tests
-3. Run tests: `pytest --cov=apps`
-4. **Update Postman collection** if API changes were made
-5. Commit with descriptive message: `git commit -m "feat: implement ticket generation with QR codes"`
-6. Push and create PR: `git push origin feature/ticket-generation`
-
-## Reference Documentation
-
-See detailed implementation guides:
-- `sprints.md` - Sprint-by-sprint implementation instructions for TukioHub
-- `claude-code-implementation-guide.md` - Detailed implementation guide with prompts
-- `kenyan-event-management-system-roadmap.md` - Complete system roadmap and architecture
-
-## M-Pesa Payment Integration
-
-**Documentation**: See `backend/MPESA_TESTING_GUIDE.md` for complete testing guide
-
-**Sandbox Credentials** (configured in `.env`):
-- Consumer Key: `IFAbZqyAW8db76xQQxhp9tdLwZ5bwjf2eACO2i3pjx60MmE3`
-- Consumer Secret: `7H9smYP8nAltoVQWxFcfyj8fScZ6ez4mW2OLpqRiNzjl5L9yhiVCRaQNXGS8UH11`
-- Shortcode: `174379` (Sandbox default)
-- Passkey: `bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919`
-
-**Key Endpoints**:
-- `POST /api/payments/mpesa/initiate/` - Initiate STK Push
-- `POST /api/payments/mpesa/callback/` - Receive M-Pesa callbacks
-- `GET /api/payments/status/<reference>/` - Check payment status
-- `GET /api/payments/transactions/` - List transactions
-
-**Testing with ngrok** (for callbacks):
-1. Run: `ngrok http 8000`
-2. Update `.env`: `MPESA_CALLBACK_URL=https://your-url.ngrok-free.app/api/payments/mpesa/callback/`
-3. Update `CSRF_TRUSTED_ORIGINS` in `config/settings/development.py`
-4. Restart Django server
-
-**Postman Collection**: `backend/docs/TukioHub_MpesaPayments.postman_collection.json`
-
----
-
-## Backend Implementation Status
-
-### ✅ COMPLETED FEATURES (Ready for Production)
-
-**Last Updated**: December 20, 2024
-**Backend Status**: 100% Complete
-**Frontend Status**: Ready to Build (Implementation guide available)
-
-#### Sprint 5: Event Management System ✅
-- Complete event CRUD operations
-- Multi-tier ticket type management
-- Promo code system with usage tracking
-- Event add-ons for additional purchases
-- Event image upload and management
-- Event categories and filtering
-- Event statistics and analytics
-
-#### Sprint 6: Public Event Discovery ✅
-- Public event browsing (no auth required)
-- Featured events showcase
-- Search by keyword, category, city
-- Nearby events (geolocation-based)
-- Event categories listing
-- This weekend/upcoming events
-- Event detail views with slug-based URLs
-
-#### Sprint 7: Booking System ✅
-- Guest checkout (no registration required)
-- Multi-ticket type selection with quantities
-- Event add-ons in booking
-- Promo code application and validation
-- Booking timeout mechanism (5 minutes)
-- Booking cancellation
-- Automated inventory locking
-- Celery tasks for booking expiration
-
-#### Sprint 8: Ticket Management ✅
-- Individual ticket generation per booking
-- QR code generation for each ticket
-- Ticket PDF generation with event details
-- Ticket verification by code
-- Ticket check-in for organizers
-- Ticket transfer functionality
-- Ticket status tracking (ACTIVE, USED, TRANSFERRED, CANCELLED)
-
-#### Sprint 9: Notifications ✅
-- Email notifications via SendGrid/AWS SES
-- SMS notifications via Africa's Talking
-- Booking confirmation emails
-- Ticket delivery emails with PDF attachment
-- Payment confirmation notifications
-- Ticket transfer notifications
-- Event reminder notifications
-
-#### Sprint 10: M-Pesa Payment Integration ✅
-- M-Pesa STK Push initiation
-- OAuth token management with Redis caching
-- Real-time payment callback handling
-- Payment status tracking (PENDING, COMPLETED, FAILED)
-- Transaction history
-- Automatic booking confirmation on successful payment
-- Payment retry mechanism
-- M-Pesa receipt number storage
-
-#### Sprint 12: Organizer Approval & Admin ✅
-- Admin dashboard with platform metrics
-- Organizer registration and approval workflow
-- Organizer verification (PENDING, APPROVED, REJECTED)
-- Document upload for verification
-- Profile image upload
-- Admin analytics (users, events, revenue)
-- Organizer management interface
-
-#### Sprint 13: Payment Integration - Booking Link ✅
-- Integrated payment flow with bookings
-- Transaction-to-booking relationship
-- Payment webhook triggers booking confirmation
-- Ticket generation after successful payment
-- Email/SMS delivery after payment
-- Payment reconciliation
-
-#### Sprint 14: Analytics & Reporting ✅
-- Organizer dashboard with comprehensive metrics
-- Event-specific analytics (revenue, sales, attendance)
-- Sales timeline charts (hourly, daily, weekly)
-- Attendee demographics and insights
-- Ticket type performance breakdown
-- Promo code usage statistics
-- CSV export for attendees and sales data
-- Quick stats overview for organizers
-- Platform-wide analytics for admins
-
-### 📊 Backend API Statistics
-
-**Total API Endpoints**: 75+
-- Authentication: 10 endpoints
-- Events (Organizer): 20+ endpoints
-- Public Events: 9 endpoints
-- Bookings: 4 endpoints
-- Tickets: 4 endpoints
-- Payments: 5 endpoints
-- Analytics: 7 endpoints
-- Admin: 5 endpoints
-- Organizer Dashboard: 2 endpoints
-
-**Database Models**: 15+
-- User (custom with roles)
-- Event, TicketType, PromoCode, EventAddOn
-- Booking, BookingItem, BookingAddOn, Ticket
-- Transaction
-- EventAnalytics, OrganizerAnalytics
-
-**Celery Tasks**: 5
-- Booking expiration
-- Payment processing
-- Email sending
-- SMS sending
-- Analytics aggregation
-
-### 📝 Documentation
-
-**API Documentation**:
-- Swagger UI: `http://localhost:8000/swagger/` ✅
-- ReDoc: `http://localhost:8000/redoc/` ✅
-- Postman Collection: `backend/docs/TukioHub_Complete_API.postman_collection.json` ✅
-  - 75+ requests across 10 folders
-  - Auto-saves tokens and IDs
-  - Ready-to-use examples
-  - Complete workflow coverage
-
-**Implementation Guides**:
-- `backend/MPESA_TESTING_GUIDE.md` - M-Pesa integration and testing
-- `backend/docs/ANALYTICS_GUIDE.md` - Analytics system documentation
-- `backend/docs/POSTMAN_GUIDE.md` - Postman collection usage
-- `frontend/FRONTEND_IMPLEMENTATION_GUIDE.md` - **NEW** Complete Next.js frontend guide with 11 sprints
-
-### 🔧 Technical Achievements
-
-**Performance Optimizations**:
-- Database query optimization with select_related() and prefetch_related()
-- Redis caching for M-Pesa OAuth tokens
-- Database indexing on frequently queried fields
-- Efficient serializers with read-only fields
-- Pagination on all list endpoints
-
-**Security Features**:
-- JWT authentication with token refresh
-- Role-based access control (Admin, Organizer)
-- Permission classes (IsEventOrganizer, IsAdmin)
-- CSRF protection
-- Input validation with serializers
-- Phone number validation (Kenyan format)
-- M-Pesa webhook signature verification ready
-- Environment-based settings (dev, prod)
-
-**Code Quality**:
-- Type hints throughout codebase
-- Comprehensive docstrings
-- Consistent naming conventions
-- Service layer pattern
-- DRY principle followed
-- Error handling with proper HTTP status codes
-- Logging configured for debugging
-
----
-
-## 🚀 FUTURE WORK (Deferred)
-
-### 1. Card Payment Integration (Sprint 11 - Deferred)
-**Status**: Not yet implemented
-**Priority**: Medium
-**Estimated Time**: 3-4 days
-
-**Scope**:
-- Integrate Stripe or Flutterwave
-- Card payment initiation
-- 3D Secure authentication
-- Webhook handling for card payments
-- Transaction status tracking
-- Refund functionality
-
-**Files to Create**:
-```
-apps/payments/stripe_service.py
-apps/payments/flutterwave_service.py
-```
-
-**API Endpoints to Add**:
-- `POST /api/payments/card/initiate/`
-- `POST /api/payments/card/callback/`
-- `POST /api/payments/card/refund/`
-
-**Why Deferred**:
-- M-Pesa covers 90%+ of Kenyan market
-- Card payments require additional merchant agreements
-- Can be added incrementally without breaking existing flow
-
-### 2. Production Deployment (Deferred)
-**Status**: Not yet configured
-**Priority**: High (when ready to launch)
-**Estimated Time**: 2-3 days
-
-**Tasks**:
-- Configure production settings (`config/settings/production.py`)
-- Set up production database (AWS RDS PostgreSQL)
-- Configure production Redis (ElastiCache or Redis Cloud)
-- Set up Celery workers with supervisor/systemd
-- Configure static file serving (AWS S3 + CloudFront)
-- Set up production web server (Gunicorn + Nginx)
-- Configure SSL certificates (Let's Encrypt)
-- Set up CI/CD pipeline (GitHub Actions)
-- Configure monitoring (Sentry for errors, Datadog for metrics)
-- Set up backup automation
-- Load testing and performance tuning
-
-**Deployment Options**:
-- **AWS**: EC2, RDS, ElastiCache, S3, CloudFront
-- **DigitalOcean**: Droplets, Managed Databases, Spaces
-- **Heroku**: Quick deployment with addons
-- **Docker**: Containerized deployment (Kubernetes/ECS)
-
-**Why Deferred**:
-- Backend is fully functional locally
-- Deployment requires production credentials and infrastructure
-- Best done after frontend is built for full-stack testing
-
-### 3. Advanced Features (Future Enhancements)
-**Status**: Not planned in current scope
-**Priority**: Low
-
-**Potential Features**:
-- Multi-currency support
-- Event recommendations (ML-based)
-- Social media integration (share events)
-- Event attendee networking
-- Live event streaming integration
-- Multi-language support (Swahili, English)
-- Mobile apps (React Native)
-- Advanced reporting (custom date ranges, filters)
-- Seat map for venue seating
-- Group booking discounts
-- Affiliate/referral system
-
----
-
-## 🎯 NEXT STEPS: Frontend Development
-
-### Status: Ready to Build ✅
-
-**Guide Available**: `frontend/FRONTEND_IMPLEMENTATION_GUIDE.md`
-
-**Frontend Tech Stack**:
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- shadcn/ui components
-- TanStack Query (React Query)
-- Zustand (state management)
-- React Hook Form + Zod
-
-**Frontend Sprints** (11 total, ~6-8 weeks):
-1. Project Foundation & Setup (2-3 days)
-2. Authentication & User Management (3-4 days)
-3. Public Event Discovery (3-4 days)
-4. Booking Flow & Cart (4-5 days)
-5. M-Pesa Payment Integration (3-4 days)
-6. Ticket Management (2-3 days)
-7. Organizer Dashboard - Event Management (4-5 days)
-8. Organizer Dashboard - Promo Codes & Add-ons (2-3 days)
-9. Analytics & Reporting (3-4 days)
-10. Admin Dashboard (3-4 days)
-11. Polish & Optimization (3-4 days)
-
-**API Integration**:
-- Comprehensive Postman collection ready
-- All endpoints documented in Swagger
-- Type definitions can be generated from API
-- Authentication flow fully documented
-- Example API calls provided
-
-**To Start Frontend Development**:
-1. Read `frontend/FRONTEND_IMPLEMENTATION_GUIDE.md`
-2. Import Postman collection: `backend/docs/TukioHub_Complete_API.postman_collection.json`
-3. Follow sprints sequentially
-4. Use backend API running on `http://localhost:8000/api`
-5. Reference Swagger docs at `http://localhost:8000/swagger/`
-
----
-
-## 📞 Support & Resources
-
-**Backend Documentation**:
-- Swagger UI: http://localhost:8000/swagger/
-- ReDoc: http://localhost:8000/redoc/
-- Django Admin: http://localhost:8000/admin/
-
-**Testing**:
-- Postman Collection: `backend/docs/TukioHub_Complete_API.postman_collection.json`
-- M-Pesa Testing Guide: `backend/MPESA_TESTING_GUIDE.md`
-
-**Code References**:
-- Sprint Implementation: `sprints.md`
-- System Roadmap: `kenyan-event-management-system-roadmap.md`
-
-**Status Summary**:
-- ✅ Backend: COMPLETE (Production-ready)
-- 📋 Frontend: Ready to build (Comprehensive guide available)
-- ⏳ Card Payments: Deferred for future
-- ⏳ Deployment: Deferred until frontend complete
-
-**Last Updated**: December 20, 2024
-**Project**: TukioHub - Kenyan Event Management System
-**Current Phase**: Backend Complete, Frontend Development Ready
+## Common Patterns
+
+- **Adding a new API endpoint:** Create serializer → view → wire in `urls.py` → document in Swagger
+- **Adding a frontend page:** Create `app/(group)/route/page.tsx` → add API endpoint in `lib/api/endpoints/` → use React Query hook
+- **Adding a payment method:** Implement service in `apps/payments/` → add view → add frontend payment component

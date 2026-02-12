@@ -1,13 +1,141 @@
-version: '3.8'
-
 services:
+  db:
+    image: postgres:14-alpine
+    container_name: tukiohub_db
+    environment:
+      POSTGRES_DB: tukiohub_db
+      POSTGRES_USER: tukiohub_user
+      POSTGRES_PASSWORD: tukiohub_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tukiohub_user -d tukiohub_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tukiohub_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tukiohub_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - ENVIRONMENT=development
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - CSRF_TRUSTED_ORIGINS=http://localhost:8000,http://localhost:3000
+      - DB_NAME=tukiohub_db
+      - DB_USER=tukiohub_user
+      - DB_PASSWORD=tukiohub_pass
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tukiohub_celery
+    volumes:
+      - ./backend:/app
+    environment:
+      - ENVIRONMENT=development
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DEBUG=True
+      - DB_NAME=tukiohub_db
+      - DB_USER=tukiohub_user
+      - DB_PASSWORD=tukiohub_pass
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A config worker -l info
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tukiohub_celery_beat
+    volumes:
+      - ./backend:/app
+    environment:
+      - ENVIRONMENT=development
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - DEBUG=True
+      - DB_NAME=tukiohub_db
+      - DB_USER=tukiohub_user
+      - DB_PASSWORD=tukiohub_pass
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tukiohub_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+
   maildev:
     image: maildev/maildev
     container_name: tukiohub_maildev
     ports:
-      - "1080:1080"  # Web interface
-      - "1025:1025"  # SMTP server
+      - "1080:1080"
+      - "1025:1025"
     environment:
       - MAILDEV_WEB_PORT=1080
       - MAILDEV_SMTP_PORT=1025
-    restart: unless-stopped
+
+volumes:
+  postgres_data:
