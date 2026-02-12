@@ -45,15 +45,15 @@ CORS_ALLOW_METHODS = [
 
 # Email Backend for Development (MailDev SMTP)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'localhost'
-EMAIL_PORT = 1025
+EMAIL_HOST = config('EMAIL_HOST', default='localhost')
+EMAIL_PORT = config('EMAIL_PORT', default=1025, cast=int)
 EMAIL_USE_TLS = False
 EMAIL_USE_SSL = False
 EMAIL_HOST_USER = ''
 EMAIL_HOST_PASSWORD = ''
 
 # Frontend URL for email links
-FRONTEND_URL = 'http://localhost:3000'
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 
 # Django Debug Toolbar
 INSTALLED_APPS += ['debug_toolbar']

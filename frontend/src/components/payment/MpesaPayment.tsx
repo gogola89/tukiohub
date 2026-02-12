@@ -59,7 +59,7 @@ export default function MpesaPayment({
     try {
       // Construct CallBackURL - Daraja API v3.0 requires this exact parameter name (case-sensitive)
       // The backend will pass this to Safaricom when initiating STK Push
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL!;
       const callbackUrl = `${apiUrl.replace('/api', '')}/api/payments/mpesa/callback/`;
 
       const result = await initiatePayment.mutateAsync({

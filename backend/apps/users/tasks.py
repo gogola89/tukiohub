@@ -45,7 +45,7 @@ def send_verification_email_task(self, user_id, verification_token_id, user_type
             }
 
         # Frontend URL for email verification
-        frontend_url = settings.FRONTEND_URL if hasattr(settings, 'FRONTEND_URL') else 'http://localhost:3000'
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         verification_link = f"{frontend_url}/verify-email?token={verification_token.token}"
 
         # Render email templates
@@ -108,7 +108,7 @@ def send_password_reset_email_task(self, user_id, password_reset_id, user_type='
             }
 
         # Frontend URL for password reset
-        frontend_url = settings.FRONTEND_URL if hasattr(settings, 'FRONTEND_URL') else 'http://localhost:3000'
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         reset_link = f"{frontend_url}/reset-password?token={password_reset.token}"
 
         # Render email templates
