@@ -13,7 +13,6 @@ import DashboardStats from '@/components/dashboard/DashboardStats';
 import { RevenueChart } from '@/components/dashboard/analytics/RevenueChart';
 import { SalesTimeline } from '@/components/dashboard/analytics/SalesTimeline';
 import { TicketBreakdown } from '@/components/dashboard/analytics/TicketBreakdown';
-import { MetricsCard } from '@/components/dashboard/analytics/MetricsCard';
 import { toast } from 'react-hot-toast';
 
 export default function AnalyticsPage() {
@@ -47,12 +46,6 @@ export default function AnalyticsPage() {
 
   // Determine which data to show based on event selection
   const displayStats = selectedEventId ? eventAnalytics : stats;
-
-  // For metrics cards, we need to handle the different data structures
-  const totalBookings = selectedEventId ? eventAnalytics?.total_bookings : stats?.total_bookings;
-  const totalAttendees = selectedEventId ? eventAnalytics?.total_attendees : stats?.total_attendees;
-  const otherMetric = selectedEventId ? (eventAnalytics as any)?.tickets_sold || 0 : stats?.upcoming_events_count || 0;
-  const metricTitle = selectedEventId ? "Tickets Sold" : "Upcoming Events";
 
   // Set the selected event from URL params on initial load
   useEffect(() => {
@@ -124,8 +117,12 @@ export default function AnalyticsPage() {
               <Ticket className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{eventAnalytics?.total_attendees || 0}</div>
-              <p className="text-xs text-muted-foreground">For this event</p>
+              <div className="text-2xl font-bold">{eventAnalytics?.tickets_sold || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                {eventAnalytics?.total_bookings
+                  ? `${eventAnalytics.total_bookings} bookings`
+                  : 'For this event'}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -163,7 +160,11 @@ export default function AnalyticsPage() {
               <div className="text-2xl font-bold">
                 KES {(eventAnalytics?.total_revenue || 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">Total revenue</p>
+              <p className="text-xs text-muted-foreground">
+                {eventAnalytics?.capacity_used_percent
+                  ? `${eventAnalytics.capacity_used_percent}% capacity used`
+                  : 'Total revenue'}
+              </p>
             </CardContent>
           </Card>
         </div>

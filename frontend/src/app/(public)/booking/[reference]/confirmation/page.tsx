@@ -23,13 +23,19 @@ function ConfirmationContent() {
     queryKey: ['booking', bookingReference],
     queryFn: () => bookingsAPI.getBooking(bookingReference),
     enabled: !!bookingReference,
+    refetchOnMount: 'always',
+    staleTime: 0,
     refetchInterval: (query) => {
-      // Keep polling if booking is confirmed but no tickets yet
       const data = query.state.data;
-      if (data?.status === 'CONFIRMED' && (!data.tickets || data.tickets.length === 0)) {
-        return 3000; // Poll every 3 seconds
+      // Poll while payment is still being processed
+      if (data?.status === 'PENDING') {
+        return 3000;
       }
-      return false; // Stop polling
+      // Poll if confirmed but tickets not yet generated
+      if (data?.status === 'CONFIRMED' && (!data.tickets || data.tickets.length === 0)) {
+        return 3000;
+      }
+      return false;
     },
   });
 
@@ -110,7 +116,7 @@ function ConfirmationContent() {
       <div className="container mx-auto px-4 py-8">
         <Card className="p-8 max-w-2xl mx-auto space-y-6">
           <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto">
-            <AlertCircle className="w-12 h-12 text-yellow-600" />
+            <Loader2 className="w-12 h-12 text-yellow-600 animate-spin" />
           </div>
 
           <div className="text-center space-y-2">
@@ -149,6 +155,7 @@ function ConfirmationContent() {
           <div className="text-xs text-gray-500 text-center">
             <p>If you entered your M-Pesa PIN and received a confirmation SMS,</p>
             <p>your tickets will be generated shortly.</p>
+            <p className="mt-2">Page auto-refreshes every 3 seconds</p>
           </div>
         </Card>
       </div>
@@ -200,20 +207,6 @@ function ConfirmationContent() {
         transactionReference={transactionRef || undefined}
       />
 
-      {/* Debug info in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <Card className="mt-6 p-4 max-w-2xl mx-auto">
-          <h3 className="font-semibold mb-2">Debug Info:</h3>
-          <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto">
-            {JSON.stringify({
-              status: booking.status,
-              payment_status: booking.payment_status,
-              tickets_count: booking.tickets?.length || 0,
-              has_tickets: hasTickets,
-            }, null, 2)}
-          </pre>
-        </Card>
-      )}
     </div>
   );
 }

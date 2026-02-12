@@ -85,14 +85,20 @@ class EventOverviewSerializer(serializers.Serializer):
     # Revenue metrics
     gross_revenue = serializers.FloatField()
     net_revenue = serializers.FloatField()
+    total_revenue = serializers.FloatField()
     total_discounts = serializers.FloatField()
-    
+
+    # Frontend-compatible fields
+    total_attendees = serializers.IntegerField()
+    tickets_sold = serializers.IntegerField()
+
     # Payment methods
     mpesa_revenue = serializers.FloatField()
     card_revenue = serializers.FloatField()
-    
+
     # Breakdowns
     ticket_types = serializers.JSONField()
+    ticket_type_breakdown = serializers.JSONField()
     promo_codes = serializers.JSONField()
     
     # Capacity metrics

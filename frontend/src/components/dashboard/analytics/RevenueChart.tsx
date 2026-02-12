@@ -11,108 +11,52 @@ interface RevenueData {
 }
 
 interface RevenueChartProps {
-  eventId?: string; // Optional event ID for event-specific analytics
+  eventId?: string;
 }
 
 export function RevenueChart({ eventId }: RevenueChartProps) {
   const {
-    data: eventData,
+    data: eventTimeline,
     isLoading: eventLoading,
-    error: eventError
   } = useQuery({
     queryKey: ['event-sales-timeline', eventId],
     queryFn: () => analyticsAPI.getEventSalesTimeline(eventId!),
-    enabled: !!eventId, // Only run if eventId is provided
+    enabled: !!eventId,
   });
 
-  // For dashboard (no eventId), we might need a different endpoint
-  // For now, we'll skip rendering if no eventId is provided
-  if (!eventId) {
-    // For dashboard view, we might need a different endpoint
-    // For now, return a placeholder or use mock data
-    const mockData: RevenueData[] = [
-      { date: 'Jan', revenue: 4000, bookings: 24 },
-      { date: 'Feb', revenue: 3000, bookings: 13 },
-      { date: 'Mar', revenue: 2000, bookings: 8 },
-      { date: 'Apr', revenue: 2780, bookings: 11 },
-      { date: 'May', revenue: 1890, bookings: 7 },
-      { date: 'Jun', revenue: 2390, bookings: 15 },
-      { date: 'Jul', revenue: 3490, bookings: 22 },
-      { date: 'Aug', revenue: 4000, bookings: 24 },
-      { date: 'Sep', revenue: 3000, bookings: 13 },
-      { date: 'Oct', revenue: 2000, bookings: 8 },
-      { date: 'Nov', revenue: 2780, bookings: 11 },
-      { date: 'Dec', revenue: 1890, bookings: 7 },
-    ];
+  const {
+    data: aggregateTimeline,
+    isLoading: aggregateLoading,
+  } = useQuery({
+    queryKey: ['aggregate-sales-timeline'],
+    queryFn: () => analyticsAPI.getAggregateSalesTimeline(30),
+    enabled: !eventId,
+  });
 
-    return (
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart
-          data={mockData}
-          margin={{
-            top: 5,
-            right: 30,
-            left: 20,
-            bottom: 5,
-          }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis />
-          <Tooltip
-            formatter={(value, name) => {
-              if (name === 'revenue') {
-                return [`KES ${Number(value).toLocaleString()}`, 'Revenue'];
-              }
-              return [value, name === 'bookings' ? 'Bookings' : name];
-            }}
-            labelFormatter={(label) => `Date: ${label}`}
-          />
-          <Legend />
-          <Bar dataKey="revenue" name="Revenue (KES)" fill="#3b82f6">
-            {mockData.map((entry: RevenueData, index: number) => (
-              <Cell key={`cell-${index}`} fill="#3b82f6" />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    );
-  }
-
-  const isLoading = eventLoading;
+  const isLoading = eventId ? eventLoading : aggregateLoading;
+  const rawData = eventId ? eventTimeline : aggregateTimeline;
 
   if (isLoading) {
-    return <div className="h-80 flex items-center justify-center">Loading chart...</div>;
+    return <div className="h-[300px] flex items-center justify-center text-muted-foreground">Loading chart...</div>;
   }
 
-  // The API response structure might be different than expected
-  // Based on the EventAnalytics interface, sales_timeline is in the overview endpoint
-  // But the sales-timeline endpoint might return the array directly or in a different structure
-  let chartData: RevenueData[] = [];
+  const chartData: RevenueData[] = Array.isArray(rawData)
+    ? rawData.map(d => ({ date: d.date, revenue: d.revenue, bookings: d.bookings }))
+    : [];
 
-  if (eventData) {
-    // Check if eventData is already an array (direct from sales-timeline endpoint)
-    if (Array.isArray(eventData)) {
-      chartData = eventData;
-    } else if (eventData.sales_timeline) {
-      // If it's an object with sales_timeline property (from overview endpoint)
-      chartData = eventData.sales_timeline;
-    } else {
-      // Fallback to empty array
-      chartData = [];
-    }
+  if (chartData.length === 0) {
+    return (
+      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No revenue data available yet
+      </div>
+    );
   }
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart
         data={chartData}
-        margin={{
-          top: 5,
-          right: 30,
-          left: 20,
-          bottom: 5,
-        }}
+        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
       >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" />
@@ -128,7 +72,7 @@ export function RevenueChart({ eventId }: RevenueChartProps) {
         />
         <Legend />
         <Bar dataKey="revenue" name="Revenue (KES)" fill="#3b82f6">
-          {chartData.map((entry: RevenueData, index: number) => (
+          {chartData.map((_entry, index) => (
             <Cell key={`cell-${index}`} fill="#3b82f6" />
           ))}
         </Bar>

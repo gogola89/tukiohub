@@ -77,12 +77,9 @@ class EventSalesTimelineAPIView(generics.GenericAPIView):
         
         # Get timeline data
         timeline = AnalyticsService.get_sales_timeline(event_id, period)
-        
+
         serializer = self.serializer_class(timeline, many=True)
-        return Response({
-            'period': period,
-            'data': serializer.data
-        })
+        return Response(serializer.data)
 
 
 class EventAttendeeDemographicsAPIView(generics.GenericAPIView):
@@ -205,6 +202,45 @@ class ExportSalesCSVAPIView(generics.GenericAPIView):
         response['Content-Disposition'] = f'attachment; filename="sales_{event.slug}.csv"'
         
         return response
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def aggregate_sales_timeline(request):
+    """
+    Get aggregate sales timeline across all organizer events.
+
+    GET /api/analytics/aggregate/sales-timeline/?period=30
+    """
+    if request.user.role != 'ORGANIZER':
+        return Response(
+            {'error': 'Only organizers can access this endpoint'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    period_days = int(request.GET.get('period', 30))
+    data = AnalyticsService.get_aggregate_sales_timeline(
+        str(request.user.id), period_days=period_days
+    )
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def aggregate_ticket_breakdown(request):
+    """
+    Get aggregate ticket type breakdown across all organizer events.
+
+    GET /api/analytics/aggregate/ticket-breakdown/
+    """
+    if request.user.role != 'ORGANIZER':
+        return Response(
+            {'error': 'Only organizers can access this endpoint'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    data = AnalyticsService.get_aggregate_ticket_breakdown(str(request.user.id))
+    return Response(data)
 
 
 @api_view(['GET'])

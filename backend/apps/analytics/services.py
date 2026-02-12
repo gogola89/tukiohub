@@ -88,36 +88,54 @@ class AnalyticsService:
                     'discount_total': float(discount_total)
                 }
 
+        # Build ticket_type_breakdown array for frontend charts
+        ticket_type_breakdown = [
+            {
+                'ticket_type': name,
+                'quantity_sold': info['quantity'],
+                'revenue': info['revenue'],
+            }
+            for name, info in ticket_types_sold.items()
+        ]
+
+        net_revenue = float(revenue_data['total_revenue'] or 0)
+
         return {
             'event_id': str(event.id),
             'event_title': event.title,
             'event_status': event.status,
             'start_datetime': event.start_datetime.isoformat(),
-            
+
             # Booking metrics
             'total_bookings': bookings.count(),
             'confirmed_bookings': confirmed_bookings.count(),
             'pending_bookings': bookings.filter(status=Booking.STATUS_PENDING).count(),
             'cancelled_bookings': bookings.filter(status=Booking.STATUS_CANCELLED).count(),
-            
+
             # Ticket metrics
             'total_tickets': tickets.count(),
             'tickets_checked_in': checked_in_tickets.count(),
             'check_in_rate': round((checked_in_tickets.count() / tickets.count() * 100) if tickets.count() > 0 else 0, 2),
-            
+
             # Revenue metrics
             'gross_revenue': float(revenue_data['total_gross'] or 0),
-            'net_revenue': float(revenue_data['total_revenue'] or 0),
+            'net_revenue': net_revenue,
+            'total_revenue': net_revenue,  # Alias for frontend compatibility
             'total_discounts': float(revenue_data['total_discounts'] or 0),
-            
+
+            # Frontend-compatible fields
+            'total_attendees': confirmed_bookings.count(),
+            'tickets_sold': tickets.count(),
+
             # Payment methods
             'mpesa_revenue': float(mpesa_revenue),
             'card_revenue': float(card_revenue),
-            
+
             # Breakdowns
             'ticket_types': ticket_types_sold,
+            'ticket_type_breakdown': ticket_type_breakdown,
             'promo_codes': promo_usage,
-            
+
             # Capacity metrics
             'capacity': event.capacity or 0,
             'tickets_available': event.capacity - tickets.count() if event.capacity else None,
@@ -311,6 +329,73 @@ class AnalyticsService:
             'avg_revenue_per_event': float(total_revenue / events.count()) if events.count() > 0 else 0,
             'avg_tickets_per_event': round(total_tickets / events.count(), 2) if events.count() > 0 else 0,
         }
+
+    @staticmethod
+    def get_aggregate_sales_timeline(organizer_id: str, period_days: int = 30) -> List[Dict]:
+        """
+        Get aggregate sales timeline across all organizer events.
+        """
+        from apps.users.models import User
+
+        try:
+            organizer = User.objects.get(id=organizer_id, role='ORGANIZER')
+        except User.DoesNotExist:
+            return []
+
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=period_days)
+
+        bookings = Booking.objects.filter(
+            event__organizer=organizer,
+            status=Booking.STATUS_CONFIRMED,
+            created_at__date__gte=start_date,
+        ).order_by('created_at')
+
+        if not bookings.exists():
+            return []
+
+        timeline = []
+        current_date = start_date
+
+        while current_date <= end_date:
+            day_bookings = bookings.filter(created_at__date=current_date)
+            timeline.append({
+                'date': current_date.isoformat(),
+                'bookings': day_bookings.count(),
+                'tickets': sum(b.total_tickets for b in day_bookings),
+                'revenue': float(day_bookings.aggregate(total=Sum('final_amount'))['total'] or 0),
+            })
+            current_date += timedelta(days=1)
+
+        return timeline
+
+    @staticmethod
+    def get_aggregate_ticket_breakdown(organizer_id: str) -> List[Dict]:
+        """
+        Get aggregate ticket type breakdown across all organizer events.
+        """
+        from apps.users.models import User
+
+        try:
+            organizer = User.objects.get(id=organizer_id, role='ORGANIZER')
+        except User.DoesNotExist:
+            return []
+
+        tickets = Ticket.objects.filter(
+            booking__event__organizer=organizer,
+            booking__status=Booking.STATUS_CONFIRMED,
+        )
+
+        # Group by ticket type name
+        breakdown = {}
+        for ticket in tickets.select_related('ticket_type'):
+            name = ticket.ticket_type.name
+            if name not in breakdown:
+                breakdown[name] = {'ticket_type': name, 'quantity_sold': 0, 'revenue': 0}
+            breakdown[name]['quantity_sold'] += 1
+            breakdown[name]['revenue'] += float(ticket.ticket_type.price)
+
+        return list(breakdown.values())
 
     @staticmethod
     def export_event_attendees_csv(event_id: str) -> io.StringIO:
