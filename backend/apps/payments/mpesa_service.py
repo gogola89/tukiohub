@@ -167,6 +167,11 @@ class MpesaService:
         timestamp = self.get_timestamp()
         password = self.generate_password(timestamp)
 
+        # Sanitize text fields - M-Pesa XML parser breaks on special chars like & < > "
+        import re
+        def sanitize(text, max_len=20):
+            return re.sub(r'[^a-zA-Z0-9\s\-_]', '', str(text))[:max_len].strip()
+
         # Prepare request payload
         payload = {
             'BusinessShortCode': self.shortcode,
@@ -178,8 +183,8 @@ class MpesaService:
             'PartyB': self.shortcode,
             'PhoneNumber': formatted_phone,
             'CallBackURL': self.callback_url,
-            'AccountReference': account_reference,
-            'TransactionDesc': transaction_desc
+            'AccountReference': sanitize(account_reference, 12),
+            'TransactionDesc': sanitize(transaction_desc, 13)
         }
 
         # Make request
