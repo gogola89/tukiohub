@@ -319,12 +319,15 @@ class CheckPaymentStatusAPIView(generics.RetrieveAPIView):
             if mpesa_response.get('success'):
                 result_code = mpesa_response.get('result_code')
 
-                # Update transaction if completed or failed
+                # Update transaction based on M-Pesa result code
                 if result_code == '0':
                     transaction.mark_as_completed(
                         result_code=result_code,
                         result_description=mpesa_response.get('result_desc')
                     )
+                elif result_code in (None, '4999'):
+                    # 4999 = still processing, keep as pending
+                    pass
                 elif result_code and result_code != '0':
                     transaction.mark_as_failed(
                         result_code=result_code,
