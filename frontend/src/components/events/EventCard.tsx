@@ -44,7 +44,7 @@ export default function EventCard({ event }: EventCardProps) {
 
   return (
     <Link href={`/events/${event.slug}`}>
-      <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 h-full">
+      <Card className="group overflow-hidden hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1.5 transition-all duration-500 ease-out h-full border hover:border-primary/20">
         {/* Event Image */}
         <div className="relative aspect-video overflow-hidden bg-muted">
           {event.image ? (

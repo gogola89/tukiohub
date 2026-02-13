@@ -143,10 +143,14 @@ export default function BookEventPage({ params }: PageProps) {
           router.push(`/booking/${booking.booking_reference}`);
         }
       } else {
-        toast.success('Booking created successfully!');
+        toast.success(
+          'Booking preserved! Awaiting payment for 5 minutes. Complete payment to confirm your tickets.',
+          { duration: 8000 }
+        );
         clearCart();
-        // Redirect to booking review page for other payment methods
-        router.push(`/booking/${booking.booking_reference}?payment_method=${paymentMethod}`);
+        // Go directly to payment page, skipping the booking summary
+        const paymentAmount = booking.final_amount || booking.total_amount;
+        router.push(`/payment?booking_reference=${booking.booking_reference}&amount=${paymentAmount}&payment_method=${paymentMethod}`);
       }
     } catch (error: any) {
       const message = error?.response?.data?.message

@@ -71,16 +71,18 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-40 h-screen w-64 border-r bg-background transition-transform duration-300',
+          'fixed left-0 top-0 z-40 h-screen w-64 border-r bg-card transition-transform duration-300',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex h-16 items-center border-b px-6">
-            <Link href="/" className="flex items-center gap-2">
-              <Ticket className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">TukioHub</span>
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary to-[#006B3F] group-hover:shadow-md group-hover:shadow-primary/20 transition-shadow">
+                <Ticket className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-primary to-[#006B3F] bg-clip-text text-transparent">TukioHub</span>
             </Link>
           </div>
 
@@ -97,10 +99,10 @@ export default function Sidebar() {
                   href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
                     isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      ? 'bg-gradient-to-r from-primary to-[#006B3F] text-white shadow-md shadow-primary/20'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
                 >
                   <Icon className="h-5 w-5" />
@@ -113,10 +115,10 @@ export default function Sidebar() {
           {/* User Info and Logout */}
           <div className="border-t p-4 space-y-2">
             {user && (
-              <div className="px-3 py-2 text-sm">
-                <p className="font-medium truncate">{user.email}</p>
+              <div className="px-3 py-2.5 rounded-xl bg-muted/50">
+                <p className="font-medium text-sm truncate">{user.email}</p>
                 {user.company_name && (
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
                     {user.company_name}
                   </p>
                 )}
@@ -124,7 +126,7 @@ export default function Sidebar() {
             )}
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
               onClick={() => {
                 setIsMobileMenuOpen(false);
                 logout();

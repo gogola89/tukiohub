@@ -39,7 +39,7 @@ reportlab==4.0.9
 
 # Payment Integration
 requests==2.31.0
-stripe==7.9.0
+stripe>=14.3.0
 
 # Email & SMS
 sendgrid==6.11.0
@@ -55,4 +55,3 @@ drf-nested-routers==0.95.0
 # Utilities
 python-slugify==8.0.1
 python-dateutil==2.8.2
-stripe==11.1.0
