@@ -9,6 +9,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _get_ticket_download_url(ticket_code):
+    """Build the full download URL for a ticket."""
+    from decouple import config
+    allowed_hosts = config('ALLOWED_HOSTS', default='localhost')
+    hosts = [h.strip() for h in allowed_hosts.split(',') if h.strip()]
+    public_host = None
+    for h in hosts:
+        if h not in ('localhost', '127.0.0.1', 'backend'):
+            public_host = h
+            break
+    if public_host:
+        base_url = f'https://{public_host}'
+    else:
+        base_url = 'http://localhost:8000'
+    return f'{base_url}/api/bookings/tickets/{ticket_code}/download/'
+
+
 class SMSService:
     """Service for sending SMS via Africa's Talking"""
 
@@ -58,22 +75,24 @@ class SMSService:
             bool: True if SMS sent successfully
         """
         event = booking.event
+        # Include download link for the first ticket if available
+        first_ticket = booking.tickets.first()
+        download_part = ''
+        if first_ticket:
+            download_url = _get_ticket_download_url(first_ticket.ticket_code)
+            download_part = f' Download: {download_url}'
+
         message = (
             f"Booking confirmed! Ref: {booking.booking_reference}. "
-            f"Tickets sent to {booking.attendee_email}. "
-            f"Event: {event.title} on {event.start_datetime.strftime('%d %b %Y')}. "
+            f"Event: {event.title} on {event.start_datetime.strftime('%d %b %Y')}.{download_part} "
             f"TukioHub"
         )
-
-        # Ensure message is within SMS limit
-        if len(message) > 160:
-            message = message[:157] + "..."
 
         return self.send_sms(booking.attendee_phone, message)
 
     def send_ticket_sms(self, ticket):
         """
-        Send ticket SMS with QR code link
+        Send ticket SMS with download link
 
         Args:
             ticket: Ticket instance
@@ -81,17 +100,14 @@ class SMSService:
         Returns:
             bool: True if SMS sent successfully
         """
-        # Note: In production, you'd generate a short link to the ticket
+        download_url = _get_ticket_download_url(ticket.ticket_code)
         message = (
             f"Your ticket for {ticket.booking.event.title}. "
             f"Code: {ticket.ticket_code}. "
-            f"Check email for full ticket. TukioHub"
+            f"Download: {download_url} TukioHub"
         )
 
-        if len(message) > 160:
-            message = message[:157] + "..."
-
-        return self.send_sms(ticket.attendee_email, message)  # This should be phone
+        return self.send_sms(ticket.attendee_phone, message)
 
     def send_event_reminder_sms(self, booking, hours_before=24):
         """

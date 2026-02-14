@@ -28,11 +28,24 @@
             <p><strong>Number of Tickets:</strong> {{ booking.tickets.count }}</p>
         </div>
 
+        {% if tickets_with_urls %}
+        <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #1976D2;">Download Your Tickets:</h3>
+            <p>Need your tickets? Download them here:</p>
+            {% for item in tickets_with_urls %}
+            <p style="margin: 8px 0;">
+                <a href="{{ item.download_url }}" style="display: inline-block; background-color: #1976D2; color: #ffffff; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+                    Download Ticket - {{ item.ticket.ticket_code }}
+                </a>
+            </p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <p><strong>Important Reminders:</strong></p>
         <ul>
             <li>Please arrive at least 30 minutes before the event starts</li>
             <li>Have your ticket ready (digital or printed) for check-in</li>
-            <li>Check your email for your ticket PDFs if you haven't already</li>
         </ul>
 
         <p>We look forward to seeing you at the event!</p>

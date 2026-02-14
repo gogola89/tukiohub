@@ -24,6 +24,20 @@
 
         <p><strong>Your tickets are attached to this email as PDF files.</strong></p>
 
+        {% if tickets_with_urls %}
+        <div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #4CAF50;">Download Your Tickets:</h3>
+            <p>You can also download your tickets directly using the links below:</p>
+            {% for item in tickets_with_urls %}
+            <p style="margin: 8px 0;">
+                <a href="{{ item.download_url }}" style="display: inline-block; background-color: #4CAF50; color: #ffffff; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+                    Download Ticket - {{ item.ticket.ticket_code }}
+                </a>
+            </p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <p>Please present your ticket (digital or printed) at the venue entrance for check-in.</p>
 
         <p>We look forward to seeing you at the event!</p>

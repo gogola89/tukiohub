@@ -11,6 +11,25 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _get_ticket_download_url(ticket_code):
+    """Build the full download URL for a ticket."""
+    # Use ALLOWED_HOSTS or a dedicated setting for the backend base URL
+    from decouple import config
+    allowed_hosts = config('ALLOWED_HOSTS', default='localhost')
+    # Pick the first non-localhost host if available, otherwise fallback
+    hosts = [h.strip() for h in allowed_hosts.split(',') if h.strip()]
+    public_host = None
+    for h in hosts:
+        if h not in ('localhost', '127.0.0.1', 'backend'):
+            public_host = h
+            break
+    if public_host:
+        base_url = f'https://{public_host}'
+    else:
+        base_url = 'http://localhost:8000'
+    return f'{base_url}/api/bookings/tickets/{ticket_code}/download/'
+
+
 class EmailService:
     """Service for sending emails via SendGrid"""
 
@@ -28,9 +47,16 @@ class EmailService:
         """
         try:
             # Prepare context for email template
+            tickets_with_urls = []
+            for ticket in tickets:
+                tickets_with_urls.append({
+                    'ticket': ticket,
+                    'download_url': _get_ticket_download_url(ticket.ticket_code),
+                })
             context = {
                 'booking': booking,
                 'tickets': tickets,
+                'tickets_with_urls': tickets_with_urls,
                 'event': booking.event,
                 'total_tickets': len(tickets),
             }
@@ -83,10 +109,18 @@ class EmailService:
             bool: True if email sent successfully
         """
         try:
+            # Build ticket download URLs
+            tickets_with_urls = []
+            for ticket in booking.tickets.all():
+                tickets_with_urls.append({
+                    'ticket': ticket,
+                    'download_url': _get_ticket_download_url(ticket.ticket_code),
+                })
             context = {
                 'booking': booking,
                 'event': booking.event,
                 'hours_before': hours_before,
+                'tickets_with_urls': tickets_with_urls,
             }
 
             html_message = render_to_string('emails/event_reminder.html', context)
@@ -163,6 +197,7 @@ class EmailService:
                 'ticket': ticket,
                 'event': ticket.booking.event,
                 'is_new_owner': True,
+                'download_url': _get_ticket_download_url(ticket.ticket_code),
             }
 
             html_message = render_to_string('emails/ticket_transfer.html', context)

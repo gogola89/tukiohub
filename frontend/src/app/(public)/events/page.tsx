@@ -22,7 +22,7 @@ export default function EventsPage() {
   const [currentPage, setCurrentPage] = useState(
     parseInt(searchParams.get('page') || '1')
   );
-  const [pageSize] = useState(12);
+  const [pageSize] = useState(6);
 
   // Build query params from filters and search
   const queryParams = {

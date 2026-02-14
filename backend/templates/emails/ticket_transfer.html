@@ -24,6 +24,17 @@
 
         <p><strong>Your ticket is attached to this email as a PDF file.</strong></p>
 
+        {% if download_url %}
+        <div style="margin: 20px 0;">
+            <p>You can also download your ticket directly:</p>
+            <p>
+                <a href="{{ download_url }}" style="display: inline-block; background-color: #4CAF50; color: #ffffff; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+                    Download Ticket
+                </a>
+            </p>
+        </div>
+        {% endif %}
+
         <p>Please present your ticket (digital or printed) at the venue entrance for check-in.</p>
 
         <p>We look forward to seeing you at the event!</p>

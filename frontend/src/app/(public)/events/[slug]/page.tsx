@@ -95,6 +95,7 @@ export default function EventDetailPage({ params }: PageProps) {
   // Use is_sold_out from API if available, otherwise calculate
   const isSoldOut = event.is_sold_out ?? false;
   const availableSeats = event.available_tickets ?? (event.capacity ? event.capacity - event.tickets_sold : 0);
+  const isFreeEvent = event.is_free || (event.min_price === 0 && (!event.max_price || event.max_price === 0));
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -276,13 +277,19 @@ export default function EventDetailPage({ params }: PageProps) {
 
               {/* Action Buttons */}
               <div className="space-y-2">
-                <Button className="w-full" size="lg" disabled={isSoldOut} asChild={!isSoldOut}>
-                  {isSoldOut ? (
-                    <span>Sold Out</span>
-                  ) : (
-                    <Link href={`/events/${event.slug}/book`}>Book Now</Link>
-                  )}
-                </Button>
+                {isFreeEvent ? (
+                  <Button className="w-full" size="lg" variant="outline" disabled>
+                    <span>Free Event</span>
+                  </Button>
+                ) : (
+                  <Button className="w-full" size="lg" disabled={isSoldOut} asChild={!isSoldOut}>
+                    {isSoldOut ? (
+                      <span>Sold Out</span>
+                    ) : (
+                      <Link href={`/events/${event.slug}/book`}>Book Now</Link>
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="w-full"
