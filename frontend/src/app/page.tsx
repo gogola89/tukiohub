@@ -105,7 +105,7 @@ export default function Home() {
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" className="border-2 hover:bg-primary/5 hover:text-foreground" asChild>
-                  <Link href="/register">Become an Organizer</Link>
+                  <Link href="/register/organizer">Become an Organizer</Link>
                 </Button>
               </div>
 
@@ -357,8 +357,8 @@ export default function Home() {
               <Button size="lg" className="bg-white text-primary hover:bg-white/90 shadow-lg" asChild>
                 <Link href="/events">Explore Events</Link>
               </Button>
-              <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white/10" asChild>
-                <Link href="/register">Become an Organizer</Link>
+              <Button size="lg" variant="outline" className="border-2 border-white text-primary hover:bg-white/10 hover:text-white" asChild>
+                <Link href="/register/organizer">Become an Organizer</Link>
               </Button>
             </div>
           </div>
