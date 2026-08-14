@@ -29,14 +29,15 @@ export interface FilterValues {
 }
 
 const categories: { value: EventCategory; label: string }[] = [
+  { value: 'MUSIC', label: 'Music' },
+  { value: 'SPORTS', label: 'Sports' },
+  { value: 'BUSINESS', label: 'Business' },
+  { value: 'ENTERTAINMENT', label: 'Entertainment' },
   { value: 'CONFERENCE', label: 'Conference' },
   { value: 'WORKSHOP', label: 'Workshop' },
-  { value: 'CONCERT', label: 'Concert' },
-  { value: 'SPORTS', label: 'Sports' },
-  { value: 'EXHIBITION', label: 'Exhibition' },
+  { value: 'FESTIVAL', label: 'Festival' },
+  { value: 'CHARITY', label: 'Charity' },
   { value: 'NETWORKING', label: 'Networking' },
-  { value: 'PARTY', label: 'Party' },
-  { value: 'THEATER', label: 'Theater' },
   { value: 'OTHER', label: 'Other' },
 ];
 

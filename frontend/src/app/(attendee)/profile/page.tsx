@@ -61,7 +61,7 @@ import Link from 'next/link';
 const addFundsSchema = z.object({
   amount: z.number().min(1, 'Amount must be at least 1'),
   phone_number: z.string().regex(/^\+254\d{9}$/, 'Phone number must start with +254 and be 13 characters (e.g., +254712345678)').optional(),
-  payment_method: z.enum(['MPESA', 'CARD']).default('MPESA'),
+  payment_method: z.enum(['MPESA', 'CARD']),
 }).refine(
   (data) => {
     // If payment method is MPESA, phone_number is required

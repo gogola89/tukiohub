@@ -16,6 +16,7 @@ export interface Booking {
   promo_code?: string;
   status: BookingStatus;
   payment_status: PaymentStatus;
+  payment_method?: 'MPESA' | 'CARD' | 'WALLET';
   notes?: string;
   tickets: Ticket[];
   booking_items: BookingItem[];

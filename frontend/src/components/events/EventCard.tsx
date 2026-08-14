@@ -2,7 +2,7 @@ import { Event } from '@/types/event';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, Users } from 'lucide-react';
-import { formatDateKE, formatDateTimeKE } from '@/lib/utils';
+import { format } from 'date-fns';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -22,17 +22,6 @@ export default function EventCard({ event }: EventCardProps) {
   const getCategoryLabel = (category?: string) => {
     if (!category) return 'Event';
     return category.charAt(0) + category.slice(1).toLowerCase().replace('_', ' ');
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Date TBA';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Date TBA';
-      return formatDateTimeKE(date);
-    } catch {
-      return 'Date TBA';
-    }
   };
 
   // Use is_sold_out from API if available, otherwise calculate
@@ -91,7 +80,7 @@ export default function EventCard({ event }: EventCardProps) {
           {/* Date */}
           <div className="flex items-center text-sm text-muted-foreground">
             <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span>{formatDate(event.start_datetime, 'EEE, MMM dd, yyyy • h:mm a')}</span>
+            <span>{format(new Date(event.start_datetime), 'EEE, MMM dd, yyyy • h:mm a')}</span>
           </div>
 
           {/* Location */}

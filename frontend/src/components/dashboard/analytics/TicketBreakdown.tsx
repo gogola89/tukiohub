@@ -8,6 +8,7 @@ interface TicketBreakdownData {
   ticket_type: string;
   quantity_sold: number;
   revenue: number;
+  [key: string]: unknown;
 }
 
 interface TicketBreakdownProps {

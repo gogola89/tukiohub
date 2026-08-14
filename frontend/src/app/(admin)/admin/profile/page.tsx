@@ -104,7 +104,7 @@ export default function AdminProfilePage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Joined</p>
-                <p className="font-medium">{user.date_joined ? format(new Date(user.date_joined), 'PPP') : 'N/A'}</p>
+                <p className="font-medium">{user.created_at ? format(new Date(user.created_at), 'PPP') : 'N/A'}</p>
               </div>
             </div>
             

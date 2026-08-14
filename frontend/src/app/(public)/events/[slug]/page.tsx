@@ -15,7 +15,7 @@ import {
   ExternalLink,
   Building2,
 } from 'lucide-react';
-import { formatDateKE, formatDateTimeKE, formatTimeKE } from '@/lib/utils';
+import { format } from 'date-fns';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -39,17 +39,6 @@ export default function EventDetailPage({ params }: PageProps) {
   const getCategoryLabel = (category?: string) => {
     if (!category) return 'Event';
     return category.charAt(0) + category.slice(1).toLowerCase().replace('_', ' ');
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Date TBA';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Date TBA';
-      return formatDateTimeKE(date);
-    } catch {
-      return 'Date TBA';
-    }
   };
 
   const handleShare = () => {
@@ -140,13 +129,13 @@ export default function EventDetailPage({ params }: PageProps) {
             <div className="flex flex-wrap gap-4 text-muted-foreground">
               <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2" />
-                <span>{formatDate(event.start_datetime, 'EEEE, MMMM dd, yyyy')}</span>
+                <span>{format(new Date(event.start_datetime), 'EEEE, MMMM dd, yyyy')}</span>
               </div>
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-2" />
                 <span>
-                  {formatDate(event.start_datetime, 'h:mm a')} -{' '}
-                  {formatDate(event.end_datetime, 'h:mm a')}
+                  {format(new Date(event.start_datetime), 'h:mm a')} -{' '}
+                  {format(new Date(event.end_datetime), 'h:mm a')}
                 </span>
               </div>
             </div>

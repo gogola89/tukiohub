@@ -4,7 +4,7 @@ import * as React from 'react';
 import PhoneInputWithCountry from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { cn } from '@/lib/utils';
-import type { E164Number } from 'react-phone-number-input';
+import type { Value as E164Number } from 'react-phone-number-input';
 
 export interface PhoneInputProps {
   value?: E164Number | string;
