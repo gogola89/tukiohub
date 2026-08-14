@@ -8,25 +8,34 @@ export interface Ticket {
     name: string;
     price: number;
   };
+  event?: {
+    id: string;
+    title: string;
+    slug: string;
+    start_datetime: string;
+    end_datetime: string;
+    venue: string;
+  };
   attendee_name: string;
   attendee_email: string;
   status: 'ACTIVE' | 'USED' | 'TRANSFERRED' | 'CANCELLED';
-  qr_code_data: string;
+  booking_reference?: string;
+  qr_code_image?: string;
   created_at: string;
-  used_at?: string;
-  transferred_to?: string;
+  checked_in_at?: string;
+  checked_in_by?: string;
 }
 
 export interface TicketVerificationResponse {
   valid: boolean;
-  ticket?: Ticket;
   message: string;
-  event?: {
-    id: string;
-    title: string;
-    start_datetime: string;
-    venue_name: string;
-  };
+  ticket?: Ticket;
+  can_check_in?: boolean;
+}
+
+export interface TicketCheckInResponse {
+  message: string;
+  ticket: Ticket;
 }
 
 export interface TransferTicketRequest {
@@ -50,7 +59,7 @@ export const ticketsAPI = {
    * Check in a ticket (mark as used)
    * Requires authentication
    */
-  checkinTicket: async (ticketCode: string) => {
+  checkinTicket: async (ticketCode: string): Promise<TicketCheckInResponse> => {
     const response = await apiClient.put(`/bookings/tickets/${ticketCode}/checkin/`);
     return response.data;
   },

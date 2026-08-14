@@ -163,19 +163,12 @@ export default function TicketCard({
             </div>
 
             {/* Status Details */}
-            {ticket.status === 'USED' && ticket.used_at && (
+            {ticket.status === 'USED' && ticket.checked_in_at && (
               <div className="border-t pt-4">
                 <p className="text-xs text-gray-500 uppercase">Checked In</p>
                 <p className="font-semibold text-gray-900">
-                  {format(new Date(ticket.used_at), 'PPP p')}
+                  {format(new Date(ticket.checked_in_at), 'PPP p')}
                 </p>
-              </div>
-            )}
-
-            {ticket.status === 'TRANSFERRED' && ticket.transferred_to && (
-              <div className="border-t pt-4">
-                <p className="text-xs text-gray-500 uppercase">Transferred To</p>
-                <p className="font-semibold text-gray-900">{ticket.transferred_to}</p>
               </div>
             )}
 

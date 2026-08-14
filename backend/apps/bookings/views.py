@@ -268,8 +268,9 @@ class VerifyTicketAPIView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
 
         if not serializer.is_valid():
+            first_error = next(iter(serializer.errors.values()))[0]
             return Response(
-                serializer.errors,
+                {'valid': False, 'message': str(first_error)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -282,13 +283,14 @@ class VerifyTicketAPIView(generics.GenericAPIView):
             ).get(ticket_code=ticket_code)
         except Ticket.DoesNotExist:
             return Response(
-                {'error': 'Invalid ticket code'},
+                {'valid': False, 'message': 'Invalid ticket code'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         # Return ticket details
         return Response({
             'valid': True,
+            'message': 'Ticket is valid',
             'ticket': TicketSerializer(ticket).data,
             'can_check_in': ticket.status == Ticket.ACTIVE and not ticket.is_checked_in
         }, status=status.HTTP_200_OK)
@@ -310,14 +312,17 @@ class CheckInTicketAPIView(generics.GenericAPIView):
             ticket = Ticket.objects.select_related('booking__event').get(ticket_code=ticket_code)
         except Ticket.DoesNotExist:
             return Response(
-                {'error': 'Ticket not found'},
+                {'error': 'Ticket not found', 'message': 'Ticket not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         # Verify user is organizer of the event
         if not request.user.is_staff and ticket.booking.event.organizer != request.user:
             return Response(
-                {'error': 'You do not have permission to check in tickets for this event'},
+                {
+                    'error': 'You do not have permission to check in tickets for this event',
+                    'message': 'You do not have permission to check in tickets for this event',
+                },
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -335,7 +340,7 @@ class CheckInTicketAPIView(generics.GenericAPIView):
 
         except (DjangoValidationError, ValidationError) as e:
             return Response(
-                {'error': str(e)},
+                {'error': str(e), 'message': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
