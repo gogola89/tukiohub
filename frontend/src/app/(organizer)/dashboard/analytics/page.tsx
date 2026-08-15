@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { analyticsAPI } from '@/lib/api/endpoints/analytics';
 import { eventsAPI } from '@/lib/api/endpoints/events';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Tag, Ticket, TrendingUp } from 'lucide-react';
+import { Calendar, Tag, Ticket, TrendingUp, FileText } from 'lucide-react';
 import DashboardStats from '@/components/dashboard/DashboardStats';
 import { RevenueChart } from '@/components/dashboard/analytics/RevenueChart';
 import { SalesTimeline } from '@/components/dashboard/analytics/SalesTimeline';
@@ -230,6 +232,23 @@ export default function AnalyticsPage() {
 
       {/* Reconciliation Report - only show when an event is selected */}
       {selectedEventId && <ReconciliationReportCard eventId={selectedEventId} />}
+
+      {/* Post-Event Report - only show when an event is selected */}
+      {selectedEventId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Post-Event Report</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Link href={`/dashboard/events/${selectedEventId}/report`}>
+              <Button variant="outline">
+                <FileText className="mr-2 h-4 w-4" />
+                View Formatted Report
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

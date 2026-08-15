@@ -13,7 +13,7 @@ export default function DashboardLayout({
     <ProtectedRoute allowedRoles={['ORGANIZER']}>
       <div className="flex min-h-screen flex-col md:flex-row">
         <Sidebar />
-        <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
+        <div className="flex-1 md:ml-64 print:ml-0 flex flex-col min-h-screen">
           <main className="flex-1">
             {children}
           </main>

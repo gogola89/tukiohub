@@ -58,7 +58,7 @@ export default function Sidebar() {
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden"
+        className="fixed top-4 left-4 z-50 md:hidden print:hidden"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       >
         {isMobileMenuOpen ? (
@@ -71,7 +71,7 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-40 h-screen w-64 border-r bg-card transition-transform duration-300',
+          'fixed left-0 top-0 z-40 h-screen w-64 border-r bg-card transition-transform duration-300 print:hidden',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >
