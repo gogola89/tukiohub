@@ -269,6 +269,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.payments.tasks.cleanup_old_pending_transactions',
         'schedule': 86400.0,  # Run once per day (24 hours * 3600 seconds)
     },
+    # Email daily registration/payment + reconciliation report for active events
+    'send-daily-reports': {
+        'task': 'apps.analytics.tasks.send_daily_reports_task',
+        'schedule': 86400.0,  # Run once per day (24 hours * 3600 seconds)
+    },
 }
 
 
@@ -287,6 +292,9 @@ CHANNEL_LAYERS = {
 EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
 SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@tukiohub.com')
+
+# Recipient for the daily reconciliation report (see apps.analytics.tasks)
+REPORTS_ADMIN_EMAIL = config('REPORTS_ADMIN_EMAIL', default='')
 
 
 # SMS Settings (Africa's Talking)

@@ -398,6 +398,94 @@ class AnalyticsService:
         return list(breakdown.values())
 
     @staticmethod
+    def get_reconciliation_report(event_id: str, since: Optional[date] = None) -> Dict:
+        """
+        Compile a registration/payment summary and reconciliation check for
+        an event: confirmed bookings without a matching completed
+        transaction, and completed transactions without a linked confirmed
+        booking. Both should be near-zero for a healthy event - surfacing
+        them is the point.
+
+        Wallet-paid bookings are excluded from the "missing transaction"
+        check since wallet payments are tracked via WalletTransaction, not
+        payments.Transaction.
+
+        Args:
+            event_id: Event ID
+            since: If provided, also report registrations/payments for this
+                   date onward (in addition to the all-time totals used for
+                   reconciliation, which always cover the full event).
+
+        Returns:
+            Dict with totals, payment method breakdown, and reconciliation flags
+        """
+        try:
+            event = Event.objects.get(id=event_id)
+        except Event.DoesNotExist:
+            return {}
+
+        confirmed_bookings = Booking.objects.filter(event=event, status=Booking.STATUS_CONFIRMED)
+        completed_transactions = Transaction.objects.filter(event=event, status=Transaction.COMPLETED)
+
+        if since:
+            registrations_period = confirmed_bookings.filter(confirmed_at__date__gte=since)
+            transactions_period = completed_transactions.filter(completed_at__date__gte=since)
+        else:
+            registrations_period = confirmed_bookings
+            transactions_period = completed_transactions
+
+        payments_by_method = []
+        for method_code, method_label in Transaction.PAYMENT_METHOD_CHOICES:
+            agg = transactions_period.filter(payment_method=method_code).aggregate(
+                total=Sum('amount'), count=Count('id')
+            )
+            if agg['count']:
+                payments_by_method.append({
+                    'method': method_code,
+                    'method_label': method_label,
+                    'count': agg['count'],
+                    'total': float(agg['total'] or 0),
+                })
+
+        # Confirmed bookings with no completed transaction (wallet payments excluded -
+        # they're tracked via WalletTransaction, not payments.Transaction)
+        bookings_with_transaction_ids = Transaction.objects.filter(
+            status=Transaction.COMPLETED, booking__isnull=False
+        ).values_list('booking_id', flat=True)
+        orphan_bookings = confirmed_bookings.exclude(
+            id__in=bookings_with_transaction_ids
+        ).exclude(payment_method=Booking.WALLET)
+
+        # Completed transactions with no linked confirmed booking
+        orphan_transactions = completed_transactions.exclude(booking__status=Booking.STATUS_CONFIRMED)
+
+        return {
+            'event_id': str(event.id),
+            'event_title': event.title,
+            'generated_at': timezone.now().isoformat(),
+            'period_since': since.isoformat() if since else None,
+
+            'registrations_total': confirmed_bookings.count(),
+            'registrations_period': registrations_period.count(),
+            'payments_by_method': payments_by_method,
+            'payments_total': float(
+                transactions_period.aggregate(total=Sum('amount'))['total'] or 0
+            ),
+
+            'reconciliation': {
+                'is_clean': orphan_bookings.count() == 0 and orphan_transactions.count() == 0,
+                'bookings_without_transaction_count': orphan_bookings.count(),
+                'bookings_without_transaction': list(
+                    orphan_bookings.values_list('booking_reference', flat=True)[:50]
+                ),
+                'transactions_without_booking_count': orphan_transactions.count(),
+                'transactions_without_booking': list(
+                    orphan_transactions.values_list('transaction_reference', flat=True)[:50]
+                ),
+            },
+        }
+
+    @staticmethod
     def export_event_attendees_csv(event_id: str) -> io.StringIO:
         """
         Export event attendees to CSV

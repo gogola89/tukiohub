@@ -287,6 +287,43 @@ class EmailService:
             return False
 
     @staticmethod
+    def send_daily_report(event, report_data, admin_email):
+        """
+        Send daily registration/payment and reconciliation report
+
+        Args:
+            event: Event instance
+            report_data: Dict from AnalyticsService.get_reconciliation_report
+            admin_email: Recipient email address
+
+        Returns:
+            bool: True if email sent successfully
+        """
+        try:
+            context = {'report': report_data}
+
+            html_message = render_to_string('emails/daily_report.html', context)
+            plain_message = strip_tags(html_message)
+
+            status_label = 'Clean' if report_data.get('reconciliation', {}).get('is_clean') else 'Needs Review'
+
+            email = EmailMessage(
+                subject=f'Daily Report - {event.title} [{status_label}]',
+                body=html_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[admin_email],
+            )
+            email.content_subtype = 'html'
+            email.send(fail_silently=False)
+
+            logger.info(f"Daily report sent to {admin_email} for event {event.title}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send daily report: {str(e)}")
+            return False
+
+    @staticmethod
     def send_wallet_deposit_confirmation(attendee, amount, new_balance, transaction_reference=None, mpesa_receipt=None):
         """
         Send wallet deposit confirmation email

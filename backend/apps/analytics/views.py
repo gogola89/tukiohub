@@ -136,6 +136,31 @@ class OrganizerDashboardAPIView(generics.GenericAPIView):
         return Response(serializer.data)
 
 
+class EventReconciliationReportAPIView(generics.GenericAPIView):
+    """
+    Generate an on-demand registration/payment reconciliation report
+
+    GET /api/analytics/events/<event_id>/reconciliation/
+    """
+
+    permission_classes = [IsAuthenticated, IsEventOrganizer]
+
+    def get(self, request, event_id):
+        """Get reconciliation report"""
+        event = get_object_or_404(Event, id=event_id)
+        self.check_object_permissions(request, event)
+
+        data = AnalyticsService.get_reconciliation_report(event_id)
+
+        if not data:
+            return Response(
+                {'error': 'Event not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response(data)
+
+
 class ExportAttendeesCSVAPIView(generics.GenericAPIView):
     """
     Export event attendees to CSV

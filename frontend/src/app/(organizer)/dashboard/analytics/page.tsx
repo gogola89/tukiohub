@@ -13,6 +13,7 @@ import DashboardStats from '@/components/dashboard/DashboardStats';
 import { RevenueChart } from '@/components/dashboard/analytics/RevenueChart';
 import { SalesTimeline } from '@/components/dashboard/analytics/SalesTimeline';
 import { TicketBreakdown } from '@/components/dashboard/analytics/TicketBreakdown';
+import ReconciliationReportCard from '@/components/dashboard/analytics/ReconciliationReportCard';
 import { toast } from 'react-hot-toast';
 
 export default function AnalyticsPage() {
@@ -226,6 +227,9 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Reconciliation Report - only show when an event is selected */}
+      {selectedEventId && <ReconciliationReportCard eventId={selectedEventId} />}
     </div>
   );
 }

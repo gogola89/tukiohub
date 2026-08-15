@@ -62,6 +62,29 @@ export interface SalesTimelineEntry {
   revenue: number;
 }
 
+export interface ReconciliationReport {
+  event_id: string;
+  event_title: string;
+  generated_at: string;
+  period_since: string | null;
+  registrations_total: number;
+  registrations_period: number;
+  payments_by_method: {
+    method: string;
+    method_label: string;
+    count: number;
+    total: number;
+  }[];
+  payments_total: number;
+  reconciliation: {
+    is_clean: boolean;
+    bookings_without_transaction_count: number;
+    bookings_without_transaction: string[];
+    transactions_without_booking_count: number;
+    transactions_without_booking: string[];
+  };
+}
+
 export const analyticsAPI = {
   getDashboardStats: async (): Promise<DashboardStats> => {
     const response = await apiClient.get('/analytics/dashboard/');
@@ -109,6 +132,11 @@ export const analyticsAPI = {
     const response = await apiClient.get(`/analytics/events/${eventId}/export/sales/`, {
       responseType: 'blob',
     });
+    return response.data;
+  },
+
+  getReconciliationReport: async (eventId: string): Promise<ReconciliationReport> => {
+    const response = await apiClient.get(`/analytics/events/${eventId}/reconciliation/`);
     return response.data;
   },
 };

@@ -7,6 +7,7 @@ from .views import (
     EventOverviewAPIView,
     EventSalesTimelineAPIView,
     EventAttendeeDemographicsAPIView,
+    EventReconciliationReportAPIView,
     OrganizerDashboardAPIView,
     ExportAttendeesCSVAPIView,
     ExportSalesCSVAPIView,
@@ -30,6 +31,7 @@ urlpatterns = [
     path('events/<uuid:event_id>/overview/', EventOverviewAPIView.as_view(), name='event-overview'),
     path('events/<uuid:event_id>/sales-timeline/', EventSalesTimelineAPIView.as_view(), name='sales-timeline'),
     path('events/<uuid:event_id>/demographics/', EventAttendeeDemographicsAPIView.as_view(), name='demographics'),
+    path('events/<uuid:event_id>/reconciliation/', EventReconciliationReportAPIView.as_view(), name='reconciliation'),
 
     # Exports
     path('events/<uuid:event_id>/export/attendees/', ExportAttendeesCSVAPIView.as_view(), name='export-attendees'),
