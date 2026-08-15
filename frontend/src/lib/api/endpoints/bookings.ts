@@ -38,4 +38,13 @@ export const bookingsAPI = {
     const response = await apiClient.post(`/bookings/${bookingReference}/confirm-wallet-payment/`);
     return response.data;
   },
+
+  // Confirm cash payment for booking (onsite registration desk, organizer-only)
+  confirmCashPayment: async (bookingReference: string): Promise<{
+    message: string;
+    booking: Booking;
+  }> => {
+    const response = await apiClient.post(`/bookings/${bookingReference}/confirm-cash-payment/`);
+    return response.data;
+  },
 };

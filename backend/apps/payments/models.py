@@ -16,10 +16,12 @@ class Transaction(models.Model):
     # Payment method choices
     MPESA = 'MPESA'
     CARD = 'CARD'
+    CASH = 'CASH'
 
     PAYMENT_METHOD_CHOICES = [
         (MPESA, 'M-Pesa'),
         (CARD, 'Card Payment'),
+        (CASH, 'Cash'),
     ]
 
     # Transaction status choices

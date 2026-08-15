@@ -1,3 +1,5 @@
+import { Ticket } from '@/lib/api/endpoints/tickets';
+
 export interface Booking {
   id: string;
   booking_reference: string;
@@ -16,10 +18,10 @@ export interface Booking {
   promo_code?: string;
   status: BookingStatus;
   payment_status: PaymentStatus;
-  payment_method?: 'MPESA' | 'CARD' | 'WALLET';
+  payment_method?: 'MPESA' | 'CARD' | 'WALLET' | 'CASH';
   notes?: string;
   tickets: Ticket[];
-  booking_items: BookingItem[];
+  items: BookingItem[];
   addon_items: AddonItem[];
   created_at: string;
   expires_at: string;
@@ -28,50 +30,24 @@ export interface Booking {
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED';
 export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
-export interface Ticket {
-  id: string;
-  ticket_code: string;
-  ticket_type: {
-    id: string;
-    name: string;
-    price: number;
-  };
-  attendee_name: string;
-  attendee_email: string;
-  status: TicketStatus;
-  checked_in: boolean;
-  checked_in_at?: string;
-  qr_code: string;
-  qr_code_data: string;  // Required by TicketCard component
-  created_at: string;
-  used_at?: string;
-  transferred_to?: string;
-}
-
-export type TicketStatus = 'ACTIVE' | 'USED' | 'TRANSFERRED' | 'CANCELLED';
+export type { Ticket };
 
 export interface BookingItem {
   id: string;
-  ticket_type: {
-    id: string;
-    name: string;
-    price: number;
-  };
+  ticket_type: string;
+  ticket_type_name: string;
   quantity: number;
-  unit_price: number;
-  total_price: number;
+  price_per_ticket: number;
+  subtotal: number;
 }
 
 export interface AddonItem {
   id: string;
-  addon: {
-    id: string;
-    name: string;
-    price: number;
-  };
+  addon: string;
+  addon_name: string;
   quantity: number;
-  unit_price: number;
-  total_price: number;
+  price_per_item: number;
+  subtotal: number;
 }
 
 export interface CreateBookingData {
@@ -90,5 +66,5 @@ export interface CreateBookingData {
   promo_code?: string;
   notes?: string;
   attendee_id?: string;  // Optional: for registered attendees
-  payment_method?: 'MPESA' | 'CARD' | 'WALLET';  // Optional: payment method selection
+  payment_method?: 'MPESA' | 'CARD' | 'WALLET' | 'CASH';  // Optional: payment method selection
 }

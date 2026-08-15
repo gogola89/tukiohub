@@ -59,7 +59,7 @@ class CreateBookingSerializer(serializers.Serializer):
     promo_code = serializers.CharField(required=False, allow_blank=True, max_length=50)
     notes = serializers.CharField(required=False, allow_blank=True)
     payment_method = serializers.ChoiceField(
-        choices=['MPESA', 'CARD', 'WALLET'],
+        choices=['MPESA', 'CARD', 'WALLET', 'CASH'],
         required=False,
         default='MPESA'
     )

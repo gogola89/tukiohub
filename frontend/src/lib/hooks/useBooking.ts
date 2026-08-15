@@ -47,3 +47,14 @@ export function useValidatePromoCode() {
       bookingsAPI.validatePromoCode(eventId, promoCode, attendeeEmail),
   });
 }
+
+export function useConfirmCashPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (bookingReference: string) => bookingsAPI.confirmCashPayment(bookingReference),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['booking', data.booking.booking_reference] });
+    },
+  });
+}

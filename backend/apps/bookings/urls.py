@@ -7,6 +7,7 @@ from .views import (
     CreateBookingAPIView,
     GetBookingAPIView,
     ConfirmWalletPaymentAPIView,
+    ConfirmCashPaymentAPIView,
     CancelBookingAPIView,
     VerifyTicketAPIView,
     CheckInTicketAPIView,
@@ -21,6 +22,7 @@ urlpatterns = [
     path('create/', CreateBookingAPIView.as_view(), name='create-booking'),
     path('<str:booking_reference>/', GetBookingAPIView.as_view(), name='get-booking'),
     path('<str:booking_reference>/confirm-wallet-payment/', ConfirmWalletPaymentAPIView.as_view(), name='confirm-wallet-payment'),
+    path('<str:booking_reference>/confirm-cash-payment/', ConfirmCashPaymentAPIView.as_view(), name='confirm-cash-payment'),
     path('<str:booking_reference>/cancel/', CancelBookingAPIView.as_view(), name='cancel-booking'),
 
     # Ticket endpoints

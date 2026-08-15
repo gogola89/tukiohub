@@ -48,11 +48,13 @@ class Booking(models.Model):
     MPESA = 'MPESA'
     CARD = 'CARD'
     WALLET = 'WALLET'
+    CASH = 'CASH'
 
     PAYMENT_METHOD_CHOICES = [
         (MPESA, 'M-Pesa'),
         (CARD, 'Card Payment'),
         (WALLET, 'Wallet'),
+        (CASH, 'Cash'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { MoreHorizontal, Edit, Eye, Trash, Send, XCircle } from 'lucide-react';
+import { MoreHorizontal, Edit, Eye, Trash, Send, XCircle, LayoutGrid } from 'lucide-react';
 import { eventsAPI } from '@/lib/api/endpoints/events';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
@@ -186,6 +186,12 @@ export default function EventListTable({ events, isLoading }: EventListTableProp
                       <Link href={`/dashboard/events/${event.id}/edit`}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Event
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/dashboard/events/${event.id}/desk`}>
+                        <LayoutGrid className="mr-2 h-4 w-4" />
+                        Registration Desk
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />

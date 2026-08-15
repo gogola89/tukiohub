@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 import logging
+import uuid
 
 from .models import Booking, Ticket
 from .serializers import (
@@ -211,6 +212,95 @@ class ConfirmWalletPaymentAPIView(generics.GenericAPIView):
             )
         except Exception as e:
             logger.error(f"Error confirming wallet payment: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'An error occurred while processing payment'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ConfirmCashPaymentAPIView(generics.GenericAPIView):
+    """
+    Confirm a booking as paid by cash (onsite registration desk)
+
+    POST /api/bookings/<booking_reference>/confirm-cash-payment/
+
+    Only the event's organizer (or staff) may confirm cash payment for a
+    booking. Generates tickets synchronously so they can be shown on-screen
+    immediately; email/SMS delivery is still queued asynchronously.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        """Return None for schema generation"""
+        if getattr(self, 'swagger_fake_view', False):
+            return None
+        return super().get_serializer_class()
+
+    def post(self, request, booking_reference):
+        """Confirm cash payment and complete booking"""
+        from apps.payments.models import Transaction
+
+        try:
+            booking = Booking.objects.select_related('event').get(
+                booking_reference=booking_reference
+            )
+        except Booking.DoesNotExist:
+            return Response(
+                {'error': 'Booking not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not request.user.is_staff and booking.event.organizer != request.user:
+            return Response(
+                {'error': 'You do not have permission to confirm payment for this booking'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if booking.status != Booking.STATUS_PENDING:
+            return Response(
+                {'error': f'Cannot confirm payment for booking with status: {booking.status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            cash_transaction = Transaction.objects.create(
+                event=booking.event,
+                booking=booking,
+                amount=booking.final_amount,
+                payment_method=Transaction.CASH,
+                transaction_reference=f"TH{uuid.uuid4().hex[:8].upper()}",
+                status=Transaction.COMPLETED,
+                completed_at=timezone.now(),
+                metadata={'confirmed_by': request.user.email, 'source': 'registration_desk'},
+            )
+
+            booking = BookingService.confirm_booking(booking.id, payment_method='CASH')
+            booking.transaction_id = str(cash_transaction.id)
+            booking.save()
+
+            # Generate tickets now so they can be shown on-screen immediately
+            TicketService.generate_tickets_for_booking(booking.id)
+
+            # Queue email/SMS delivery (tickets already exist, so this only sends)
+            from .tasks import generate_and_send_tickets_task
+            generate_and_send_tickets_task.delay(str(booking.id))
+
+            logger.info(f"Cash payment confirmed for booking {booking.booking_reference} by {request.user.email}")
+
+            booking.refresh_from_db()
+            return Response({
+                'message': 'Cash payment confirmed. Tickets generated.',
+                'booking': BookingDetailSerializer(booking).data,
+            }, status=status.HTTP_200_OK)
+
+        except (DjangoValidationError, ValidationError) as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(f"Error confirming cash payment: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'An error occurred while processing payment'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

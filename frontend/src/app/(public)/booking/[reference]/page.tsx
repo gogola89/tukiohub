@@ -181,13 +181,13 @@ export default function BookingReviewPage({ params }: PageProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {booking.booking_items?.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center">
+                {booking.items?.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center">
                     <div>
-                      <p className="font-medium">{item.ticket_type.name}</p>
+                      <p className="font-medium">{item.ticket_type_name}</p>
                       <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
                     </div>
-                    <p className="font-semibold">KES {item.total_price.toLocaleString()}</p>
+                    <p className="font-semibold">KES {item.subtotal.toLocaleString()}</p>
                   </div>
                 ))}
               </div>
