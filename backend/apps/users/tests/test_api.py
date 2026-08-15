@@ -24,7 +24,8 @@ def create_user():
         defaults = {
             'email': 'test@example.com',
             'password': 'testpass123',
-            'phone_number': '+254712345678'
+            'phone_number': '+254712345678',
+            'email_verified': True,
         }
         defaults.update(kwargs)
         password = defaults.pop('password')

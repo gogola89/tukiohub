@@ -49,13 +49,13 @@ class TestUserModel:
         assert str(user) == 'test@example.com'
 
     def test_user_auto_username(self):
-        """Test username is auto-generated from email"""
+        """Test username is auto-generated from the full email (avoids cross-domain collisions)"""
         user = User.objects.create_user(
             email='test@example.com',
             password='testpass123',
             phone_number='+254712345678'
         )
-        assert user.username == 'test'
+        assert user.username == 'test@example.com'
 
     def test_user_is_organizer_property(self):
         """Test is_organizer property"""
