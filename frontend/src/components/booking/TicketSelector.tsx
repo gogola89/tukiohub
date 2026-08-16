@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Minus, Plus } from 'lucide-react';
+import { format } from 'date-fns';
 import { TicketType } from '@/types/event';
 import { useCartStore } from '@/lib/store/cartStore';
 
@@ -80,6 +81,17 @@ export default function TicketSelector({ ticketTypes, eventId }: TicketSelectorP
     return now >= salesStart && now <= salesEnd && getAvailableQuantity(ticketType) > 0;
   };
 
+  const getUnavailableReason = (ticketType: TicketType): string => {
+    if (!ticketType.is_active) return 'This ticket type is not active';
+    if (getAvailableQuantity(ticketType) === 0) return 'Sold out';
+    const now = new Date();
+    const salesStart = new Date(ticketType.sales_start_date);
+    const salesEnd = new Date(ticketType.sales_end_date);
+    if (now < salesStart) return `Sales open ${format(salesStart, 'PPP p')}`;
+    if (now > salesEnd) return 'Sales period has ended';
+    return 'Not available';
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Select Tickets</h2>
@@ -121,11 +133,7 @@ export default function TicketSelector({ ticketTypes, eventId }: TicketSelectorP
               {!isAvailable ? (
                 <div className="text-center py-2">
                   <p className="text-muted-foreground">
-                    {!ticketType.is_active
-                      ? 'This ticket type is not active'
-                      : available === 0
-                      ? 'Sold out'
-                      : 'Sales period has ended'}
+                    {getUnavailableReason(ticketType)}
                   </p>
                 </div>
               ) : (

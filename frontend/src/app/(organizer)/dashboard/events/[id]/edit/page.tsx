@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -42,6 +42,7 @@ import { ChevronLeft, Plus, Edit, Trash, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { createEventSchema, eventCategories, CreateEventInput } from '@/lib/validations/event';
+import { toDatetimeLocalInput } from '@/lib/utils';
 import TicketTypeForm from '@/components/dashboard/tickets/TicketTypeForm';
 import PromoCodeForm from '@/components/dashboard/promo-codes/PromoCodeForm';
 import AddonForm from '@/components/dashboard/addons/AddonForm';
@@ -75,6 +76,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
   const [selectedPromo, setSelectedPromo] = useState<PromoCode | undefined>();
   const [addonFormOpen, setAddonFormOpen] = useState(false);
   const [selectedAddon, setSelectedAddon] = useState<EventAddon | undefined>();
+  const [formReady, setFormReady] = useState(false);
 
   const { data: event, isLoading, error } = useQuery({
     queryKey: ['event', eventId],
@@ -103,25 +105,38 @@ export default function EditEventPage({ params }: EditEventPageProps) {
       longitude: undefined,
       age_restriction: undefined,
     },
-    values: event
-      ? {
-          title: event.title,
-          description: event.description,
-          category: event.category,
-          start_datetime: event.start_datetime.split('.')[0].split('Z')[0],
-          end_datetime: event.end_datetime.split('.')[0].split('Z')[0],
-          is_online: event.is_online,
-          venue_name: event.venue_name || '',
-          venue_address: event.venue_address || '',
-          online_url: event.online_url || '',
-          capacity: event.capacity,
-          is_free: event.is_free || false,
-          latitude: event.latitude,
-          longitude: event.longitude,
-          age_restriction: event.age_restriction,
-        }
-      : undefined,
   });
+
+  // Explicitly reset once the event loads, rather than relying on RHF's
+  // `values` sync - the category Select wasn't reliably picking up the
+  // synced value on first load. formReady then forces the Select to
+  // remount (see key= below) so its initial value is read fresh, after
+  // reset has already applied - not while the form was still mounted with
+  // its pre-load defaults.
+  useEffect(() => {
+    if (!event) return;
+    form.reset({
+      title: event.title,
+      description: event.description,
+      category: event.category,
+      start_datetime: toDatetimeLocalInput(event.start_datetime),
+      end_datetime: toDatetimeLocalInput(event.end_datetime),
+      is_online: event.is_online,
+      venue_name: event.venue_name || '',
+      venue_address: event.venue_address || '',
+      online_url: event.online_url || '',
+      capacity: event.capacity,
+      is_free: event.is_free || false,
+      // latitude/longitude come back as strings (DRF serializes
+      // DecimalField as string by default) - coerce to number or Zod
+      // rejects them on submit.
+      latitude: event.latitude !== undefined && event.latitude !== null ? Number(event.latitude) : undefined,
+      longitude: event.longitude !== undefined && event.longitude !== null ? Number(event.longitude) : undefined,
+      age_restriction: event.age_restriction,
+    });
+    setFormReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event]);
 
   const updateMutation = useMutation({
     mutationFn: (data: EditEventInput) => {
@@ -393,9 +408,9 @@ export default function EditEventPage({ params }: EditEventPageProps) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select key={formReady ? 'category-ready' : 'category-loading'} onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="w-full">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
@@ -964,6 +979,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
       </Tabs>
 
       <TicketTypeForm
+        key={selectedTicket?.id ?? 'new-ticket'}
         eventId={eventId}
         ticketType={selectedTicket}
         open={ticketFormOpen}
@@ -971,6 +987,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
       />
 
       <PromoCodeForm
+        key={selectedPromo?.id ?? 'new-promo'}
         eventId={eventId}
         promoCode={selectedPromo}
         open={promoFormOpen}
@@ -978,6 +995,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
       />
 
       <AddonForm
+        key={selectedAddon?.id ?? 'new-addon'}
         eventId={eventId}
         addon={selectedAddon}
         open={addonFormOpen}
