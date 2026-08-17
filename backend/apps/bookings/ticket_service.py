@@ -12,6 +12,7 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from PIL import Image, ImageDraw, ImageFont
 import logging
 
@@ -81,9 +82,15 @@ class TicketService:
         small_font = "Helvetica"
 
         # Header - Event Name
-        c.setFont(title_font, 24)
+        # Shrink to fit so long titles never bleed past the border (fixed 24pt
+        # could render wider than the page itself for a long conference name)
         c.setFillColor(colors.HexColor("#1a1a1a"))
-        event_title = event.title[:50]  # Truncate if too long
+        event_title = event.title[:80]
+        header_max_width = width - 140  # stay inside the 50pt border + padding
+        title_size = 24
+        while title_size > 12 and stringWidth(event_title, title_font, title_size) > header_max_width:
+            title_size -= 1
+        c.setFont(title_font, title_size)
         c.drawCentredString(width / 2, height - 100, event_title)
 
         # Event Details
@@ -148,10 +155,17 @@ class TicketService:
 
         c.drawImage(qr_image, qr_x, y_position, width=qr_size, height=qr_size)
 
-        # Footer Section
-        y_position -= 60
-        c.setFont(small_font, 10)
+        # Footer Section - anchored to the bottom of the border box and laid
+        # out upward, so it can never drift past the frame regardless of how
+        # much space the content above it used (the previous top-down
+        # decrement from the QR position could push "Terms and conditions"
+        # below the border, or off the page entirely).
         c.setFillColor(colors.HexColor("#666666"))
+
+        terms_y = 75
+        c.setFont(small_font, 8)
+        c.drawCentredString(width / 2, terms_y,
+                            "Terms and conditions apply. Visit event page for details.")
 
         footer_text = [
             "Please present this ticket (digital or printed) at the venue entrance",
@@ -161,15 +175,12 @@ class TicketService:
             "Powered by TukioHub - Your Event Management Platform"
         ]
 
-        for line in footer_text:
-            c.drawCentredString(width / 2, y_position, line)
-            y_position -= 15
-
-        # Terms and conditions (very small)
-        y_position -= 10
-        c.setFont(small_font, 8)
-        c.drawCentredString(width / 2, y_position,
-                            "Terms and conditions apply. Visit event page for details.")
+        c.setFont(small_font, 10)
+        line_y = terms_y + 18
+        for line in reversed(footer_text):
+            if line:
+                c.drawCentredString(width / 2, line_y, line)
+            line_y += 15
 
         # Draw border
         c.setStrokeColor(colors.HexColor("#e0e0e0"))
