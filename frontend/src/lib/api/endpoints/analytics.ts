@@ -97,12 +97,12 @@ export const analyticsAPI = {
   },
 
   getEventAnalytics: async (eventId: string): Promise<EventAnalytics> => {
-    const response = await apiClient.get(`/analytics/events/${eventId}/overview/`);
+    const response = await apiClient.get(`/analytics/for-event/${eventId}/overview/`);
     return response.data;
   },
 
   getEventSalesTimeline: async (eventId: string): Promise<SalesTimelineEntry[]> => {
-    const response = await apiClient.get(`/analytics/events/${eventId}/sales-timeline/`);
+    const response = await apiClient.get(`/analytics/for-event/${eventId}/sales-timeline/`);
     return response.data;
   },
 
@@ -117,26 +117,26 @@ export const analyticsAPI = {
   },
 
   getEventDemographics: async (eventId: string) => {
-    const response = await apiClient.get(`/analytics/events/${eventId}/demographics/`);
+    const response = await apiClient.get(`/analytics/for-event/${eventId}/demographics/`);
     return response.data;
   },
 
   exportAttendees: async (eventId: string): Promise<Blob> => {
-    const response = await apiClient.get(`/analytics/events/${eventId}/export/attendees/`, {
+    const response = await apiClient.get(`/analytics/for-event/${eventId}/export/attendees/`, {
       responseType: 'blob',
     });
     return response.data;
   },
 
   exportSales: async (eventId: string): Promise<Blob> => {
-    const response = await apiClient.get(`/analytics/events/${eventId}/export/sales/`, {
+    const response = await apiClient.get(`/analytics/for-event/${eventId}/export/sales/`, {
       responseType: 'blob',
     });
     return response.data;
   },
 
   getReconciliationReport: async (eventId: string): Promise<ReconciliationReport> => {
-    const response = await apiClient.get(`/analytics/events/${eventId}/reconciliation/`);
+    const response = await apiClient.get(`/analytics/for-event/${eventId}/reconciliation/`);
     return response.data;
   },
 };

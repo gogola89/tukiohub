@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -20,6 +20,8 @@ import { toast } from 'react-hot-toast';
 
 export default function AnalyticsPage() {
   const searchParams = useSearchParams();
+  const urlEventId = searchParams.get('event') || undefined;
+
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: analyticsAPI.getDashboardStats,
@@ -30,8 +32,20 @@ export default function AnalyticsPage() {
     queryFn: eventsAPI.getMyEvents,
   });
 
-  // State for selected event
-  const [selectedEventId, setSelectedEventId] = useState<string | undefined>(undefined);
+  // Selected event: derived straight from the URL on first render (no effect,
+  // no gap where charts mount with the event query disabled and then flip
+  // enabled a moment later - that extra render transition was getting the
+  // event-scoped requests aborted mid-flight). The dropdown can override it
+  // manually; the backend already enforces that the event belongs to this
+  // organizer, so no separate existence check is needed here.
+  const [manualEventId, setManualEventId] = useState<string | undefined>();
+  const [hasManualSelection, setHasManualSelection] = useState(false);
+  const selectedEventId = hasManualSelection ? manualEventId : urlEventId;
+
+  const handleEventChange = (value: string) => {
+    setHasManualSelection(true);
+    setManualEventId(value === 'all' ? undefined : value);
+  };
 
   // Get event-specific analytics if an event is selected
   const { data: eventAnalytics, isLoading: eventAnalyticsLoading } = useQuery({
@@ -49,18 +63,6 @@ export default function AnalyticsPage() {
 
   // Determine which data to show based on event selection
   const displayStats = selectedEventId ? eventAnalytics : stats;
-
-  // Set the selected event from URL params on initial load
-  useEffect(() => {
-    const eventParam = searchParams.get('event');
-    if (eventParam && events) {
-      // Verify the event exists for this organizer
-      const eventExists = events.some(event => event.id === eventParam);
-      if (eventExists) {
-        setSelectedEventId(eventParam);
-      }
-    }
-  }, [searchParams, events]);
 
   if (statsLoading || eventsLoading || (selectedEventId && eventAnalyticsLoading) || (selectedEventId && eventDetailsLoading)) {
     return (
@@ -93,7 +95,7 @@ export default function AnalyticsPage() {
         <div className="w-full md:w-auto">
           <Select
             value={selectedEventId || "all"}
-            onValueChange={(value) => setSelectedEventId(value === "all" ? undefined : value)}
+            onValueChange={handleEventChange}
           >
             <SelectTrigger className="w-full md:w-[300px]">
               <SelectValue placeholder="Select an event" />

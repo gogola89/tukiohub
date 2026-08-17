@@ -26,7 +26,7 @@ class EventOverviewAPIView(generics.GenericAPIView):
     """
     Get comprehensive event overview with analytics
     
-    GET /api/analytics/events/<event_id>/overview/
+    GET /api/analytics/for-event/<event_id>/overview/
     """
     
     permission_classes = [IsAuthenticated, IsEventOrganizer]
@@ -55,7 +55,7 @@ class EventSalesTimelineAPIView(generics.GenericAPIView):
     """
     Get sales timeline for event
     
-    GET /api/analytics/events/<event_id>/sales-timeline/?period=daily
+    GET /api/analytics/for-event/<event_id>/sales-timeline/?period=daily
     """
     
     permission_classes = [IsAuthenticated, IsEventOrganizer]
@@ -86,7 +86,7 @@ class EventAttendeeDemographicsAPIView(generics.GenericAPIView):
     """
     Get attendee demographics for event
     
-    GET /api/analytics/events/<event_id>/demographics/
+    GET /api/analytics/for-event/<event_id>/demographics/
     """
     
     permission_classes = [IsAuthenticated, IsEventOrganizer]
@@ -140,7 +140,7 @@ class EventReconciliationReportAPIView(generics.GenericAPIView):
     """
     Generate an on-demand registration/payment reconciliation report
 
-    GET /api/analytics/events/<event_id>/reconciliation/
+    GET /api/analytics/for-event/<event_id>/reconciliation/
     """
 
     permission_classes = [IsAuthenticated, IsEventOrganizer]
@@ -165,7 +165,7 @@ class ExportAttendeesCSVAPIView(generics.GenericAPIView):
     """
     Export event attendees to CSV
 
-    GET /api/analytics/events/<event_id>/export/attendees/
+    GET /api/analytics/for-event/<event_id>/export/attendees/
     """
 
     permission_classes = [IsAuthenticated, IsEventOrganizer]
@@ -199,7 +199,7 @@ class ExportSalesCSVAPIView(generics.GenericAPIView):
     """
     Export event sales to CSV
 
-    GET /api/analytics/events/<event_id>/export/sales/
+    GET /api/analytics/for-event/<event_id>/export/sales/
     """
 
     permission_classes = [IsAuthenticated, IsEventOrganizer]

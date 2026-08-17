@@ -28,12 +28,17 @@ urlpatterns = [
     path('aggregate/ticket-breakdown/', aggregate_ticket_breakdown, name='aggregate-ticket-breakdown'),
 
     # Event analytics
-    path('events/<uuid:event_id>/overview/', EventOverviewAPIView.as_view(), name='event-overview'),
-    path('events/<uuid:event_id>/sales-timeline/', EventSalesTimelineAPIView.as_view(), name='sales-timeline'),
-    path('events/<uuid:event_id>/demographics/', EventAttendeeDemographicsAPIView.as_view(), name='demographics'),
-    path('events/<uuid:event_id>/reconciliation/', EventReconciliationReportAPIView.as_view(), name='reconciliation'),
+    # Note: deliberately "for-event" rather than "events" here - ad-blockers
+    # and browser tracking protection commonly block URLs matching
+    # analytics/events/* patterns (that's the exact shape most third-party
+    # analytics SDKs use for their tracking beacons), which silently killed
+    # these first-party endpoints client-side with no server-visible error.
+    path('for-event/<uuid:event_id>/overview/', EventOverviewAPIView.as_view(), name='event-overview'),
+    path('for-event/<uuid:event_id>/sales-timeline/', EventSalesTimelineAPIView.as_view(), name='sales-timeline'),
+    path('for-event/<uuid:event_id>/demographics/', EventAttendeeDemographicsAPIView.as_view(), name='demographics'),
+    path('for-event/<uuid:event_id>/reconciliation/', EventReconciliationReportAPIView.as_view(), name='reconciliation'),
 
     # Exports
-    path('events/<uuid:event_id>/export/attendees/', ExportAttendeesCSVAPIView.as_view(), name='export-attendees'),
-    path('events/<uuid:event_id>/export/sales/', ExportSalesCSVAPIView.as_view(), name='export-sales'),
+    path('for-event/<uuid:event_id>/export/attendees/', ExportAttendeesCSVAPIView.as_view(), name='export-attendees'),
+    path('for-event/<uuid:event_id>/export/sales/', ExportSalesCSVAPIView.as_view(), name='export-sales'),
 ]
