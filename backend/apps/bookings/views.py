@@ -9,6 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 from rest_framework.exceptions import ValidationError
 from django.utils import timezone
 import logging
@@ -341,6 +342,34 @@ class CancelBookingAPIView(generics.GenericAPIView):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class TicketSearchAPIView(generics.ListAPIView):
+    """
+    Search tickets by code or attendee name, scoped to the organizer's own events
+
+    GET /api/bookings/tickets/search/?q=<query>&event_id=<uuid>
+    """
+
+    serializer_class = TicketSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = Ticket.objects.filter(
+            booking__event__organizer=self.request.user
+        ).select_related('booking__event', 'ticket_type').order_by('-created_at')
+
+        query = self.request.query_params.get('q', '').strip()
+        if query:
+            queryset = queryset.filter(
+                Q(ticket_code__icontains=query) | Q(attendee_name__icontains=query)
+            )
+
+        event_id = self.request.query_params.get('event_id')
+        if event_id:
+            queryset = queryset.filter(booking__event_id=event_id)
+
+        return queryset
 
 
 class VerifyTicketAPIView(generics.GenericAPIView):

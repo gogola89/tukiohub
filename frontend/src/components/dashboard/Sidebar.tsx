@@ -12,6 +12,8 @@ import {
   Menu,
   X,
   LogOut,
+  QrCode,
+  LayoutGrid,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -38,6 +40,21 @@ const navItems: NavItem[] = [
     title: 'Analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
+  },
+  {
+    title: 'Registration Desk',
+    href: '/dashboard/desk',
+    icon: LayoutGrid,
+  },
+  {
+    title: 'Tickets',
+    href: '/dashboard/tickets',
+    icon: Ticket,
+  },
+  {
+    title: 'Verify Tickets',
+    href: '/dashboard/verify',
+    icon: QrCode,
   },
   {
     title: 'Profile',

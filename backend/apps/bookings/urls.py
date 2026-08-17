@@ -10,6 +10,7 @@ from .views import (
     ConfirmCashPaymentAPIView,
     CancelBookingAPIView,
     VerifyTicketAPIView,
+    TicketSearchAPIView,
     CheckInTicketAPIView,
     TransferTicketAPIView,
     DownloadTicketAPIView,
@@ -27,6 +28,7 @@ urlpatterns = [
 
     # Ticket endpoints
     path('tickets/verify/', VerifyTicketAPIView.as_view(), name='verify-ticket'),
+    path('tickets/search/', TicketSearchAPIView.as_view(), name='search-tickets'),
     path('tickets/<str:ticket_code>/checkin/', CheckInTicketAPIView.as_view(), name='checkin-ticket'),
     path('tickets/<str:ticket_code>/transfer/', TransferTicketAPIView.as_view(), name='transfer-ticket'),
     path('tickets/<str:ticket_code>/download/', DownloadTicketAPIView.as_view(), name='download-ticket'),

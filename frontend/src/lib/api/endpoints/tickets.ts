@@ -44,6 +44,13 @@ export interface TransferTicketRequest {
   new_attendee_phone: string;
 }
 
+export interface TicketSearchResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Ticket[];
+}
+
 export const ticketsAPI = {
   /**
    * Verify a ticket by ticket code
@@ -79,6 +86,17 @@ export const ticketsAPI = {
     const response = await apiClient.get(`/bookings/tickets/${ticketCode}/download/`, {
       responseType: 'blob',
     });
+    return response.data;
+  },
+
+  /**
+   * Search tickets by code or attendee name, scoped to the organizer's own events
+   */
+  searchTickets: async (query: string, eventId?: string): Promise<TicketSearchResponse> => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (eventId) params.set('event_id', eventId);
+    const response = await apiClient.get(`/bookings/tickets/search/?${params.toString()}`);
     return response.data;
   },
 };
