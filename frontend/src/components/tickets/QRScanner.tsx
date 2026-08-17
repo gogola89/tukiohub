@@ -43,7 +43,7 @@ export default function QRScanner({ onScan, paused = false }: QRScannerProps) {
 
   if (error) {
     return (
-      <Card className="p-6 flex flex-col items-center justify-center text-center gap-2 bg-gray-50">
+      <Card className="max-w-md mx-auto p-6 flex flex-col items-center justify-center text-center gap-2 bg-gray-50">
         <CameraOff className="w-8 h-8 text-gray-400" />
         <p className="text-sm text-gray-600">{error}</p>
         <p className="text-xs text-gray-500">Use the ticket code field below instead.</p>
@@ -52,7 +52,7 @@ export default function QRScanner({ onScan, paused = false }: QRScannerProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border">
+    <div className="max-w-md mx-auto overflow-hidden rounded-lg border">
       <Scanner
         onScan={handleScan}
         onError={handleError}

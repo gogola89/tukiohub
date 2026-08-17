@@ -6,11 +6,12 @@ import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { eventsAPI } from '@/lib/api/endpoints/events';
+import { ticketsAPI } from '@/lib/api/endpoints/tickets';
 import { useCreateBooking, useConfirmCashPayment } from '@/lib/hooks/useBooking';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, Loader2, Smartphone, Banknote, User } from 'lucide-react';
+import { ChevronLeft, Loader2, Smartphone, Banknote, User, Download, Printer } from 'lucide-react';
 import DeskTicketPicker from '@/components/dashboard/desk/DeskTicketPicker';
 import AttendeeForm from '@/components/booking/AttendeeForm';
 import MpesaPayment from '@/components/payment/MpesaPayment';
@@ -33,6 +34,8 @@ export default function RegistrationDeskPage({ params }: DeskPageProps) {
   const [attendee, setAttendee] = useState<AttendeeFormInput | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('MPESA');
   const [booking, setBooking] = useState<Booking | null>(null);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [isPrintingAll, setIsPrintingAll] = useState(false);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ['event', eventId],
@@ -101,9 +104,48 @@ export default function RegistrationDeskPage({ params }: DeskPageProps) {
     setBooking(null);
   };
 
+  const handleDownloadAll = async () => {
+    if (!booking) return;
+    setIsDownloadingAll(true);
+    try {
+      for (const ticket of booking.tickets) {
+        const blob = await ticketsAPI.downloadTicket(ticket.ticket_code);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ticket-${ticket.ticket_code}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch {
+      toast.error('Failed to download one or more tickets');
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  };
+
+  const handlePrintAll = async () => {
+    if (!booking) return;
+    setIsPrintingAll(true);
+    try {
+      for (const ticket of booking.tickets) {
+        const blob = await ticketsAPI.downloadTicket(ticket.ticket_code);
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+      }
+    } catch {
+      toast.error('Failed to open one or more tickets for printing');
+    } finally {
+      setIsPrintingAll(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl space-y-4">
+      <div className="w-full px-4 py-8 space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -112,18 +154,18 @@ export default function RegistrationDeskPage({ params }: DeskPageProps) {
 
   if (!event) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl text-center">
+      <div className="w-full px-4 py-8 text-center">
         <p className="text-muted-foreground">Event not found.</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <Link href={`/dashboard/events/${eventId}/edit`}>
+    <div className="w-full px-4 py-8 max-w-2xl mx-auto">
+      <Link href="/dashboard/desk">
         <Button variant="ghost" className="mb-4 -ml-4">
           <ChevronLeft className="mr-2 h-4 w-4" />
-          Back to Event
+          Back to Desk
         </Button>
       </Link>
 
@@ -241,6 +283,37 @@ export default function RegistrationDeskPage({ params }: DeskPageProps) {
               Tickets are shown below and have been emailed to {attendee?.attendee_email}
             </p>
           </Card>
+
+          {booking && booking.tickets.length > 0 && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={isDownloadingAll}
+                onClick={handleDownloadAll}
+              >
+                {isDownloadingAll ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                Download {booking.tickets.length > 1 ? 'All Tickets' : 'Ticket'}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={isPrintingAll}
+                onClick={handlePrintAll}
+              >
+                {isPrintingAll ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Printer className="w-4 h-4 mr-2" />
+                )}
+                Print {booking.tickets.length > 1 ? 'All Tickets' : 'Ticket'}
+              </Button>
+            </div>
+          )}
 
           {booking?.tickets.map((ticket) => (
             <TicketCard

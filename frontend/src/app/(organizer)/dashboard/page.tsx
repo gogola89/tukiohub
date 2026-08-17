@@ -11,7 +11,7 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="w-full px-4 py-8">
       {/* Welcome Header */}
       <div className="mb-8 relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#006B3F] via-primary to-[#006B3F] p-8 text-white">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">

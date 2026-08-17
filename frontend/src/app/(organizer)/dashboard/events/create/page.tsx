@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 export default function CreateEventPage() {
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="w-full px-4 py-8 max-w-4xl mx-auto">
       <div className="mb-8">
         <Button variant="ghost" asChild className="mb-4">
           <Link href="/dashboard/events">

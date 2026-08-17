@@ -308,7 +308,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         <Skeleton className="h-8 w-64 mb-8" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -317,7 +317,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
 
   if (error || !event) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
           <p className="text-sm text-destructive">
             Failed to load event. Please try again later.
@@ -334,7 +334,7 @@ export default function EditEventPage({ params }: EditEventPageProps) {
   console.log('EditEventPage - event.addons:', event?.addons);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="w-full px-4 py-8">
       <div className="mb-8">
         <Button variant="ghost" asChild className="mb-4">
           <Link href="/dashboard/events">
